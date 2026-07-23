@@ -9,7 +9,11 @@ const aiDecisionRouter = require('./routes/aiDecision');
 
 const app = express();
 
-app.use(cors({ origin: '*' }));
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173']
+  : '*';
+
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Health check
