@@ -224,12 +224,11 @@ Returns service status OK.
 5. Deploy!
 
 ---
-
 ## 📸 Interface Screenshots
 
-*(Placeholder: High-resolution screenshots of the dark theme map dashboard, dynamic hospital ranking, ambulance cards, dispatch timeline, and SOS overlay)*
-
----
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/05de47ad-c76f-49f8-8e44-f1710f3fcaf8" alt="LifeLine AI Interface" width="900"/>
+</p>
 
 ## 🔮 Future Enhancements
 
