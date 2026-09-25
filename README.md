@@ -200,15 +200,27 @@ The system has robust fallback behavior for external routing/traffic failures:
 - Reset functionality
 - Error-safe simulation
 
-## 12. SCREENS / FEATURE SHOWCASE
+## 📸 Project Screenshots
 
-### Command Center Dashboard
-![LifeLine AI Interface](https://github.com/user-attachments/assets/05de47ad-c76f-49f8-8e44-f1710f3fcaf8)
-- **What the judge is seeing**: The main situational awareness map with dispatched units, routing options, and ongoing incident markers.
-- **What the feature does**: Aggregates all emergency data into a single operational view.
-- **Why it matters**: Gives operators complete visibility without switching screens.
+### 1. Command Center Dashboard
+![Command Center Dashboard](docs/screenshots/01-dashboard.png)
+What it shows: Central command-center interface showing emergency operations, live map, AI route intelligence and operational status.
 
-*(Note: Additional UI features are best experienced directly in the Live Demo.)*
+### 2. Emergency & Dispatch
+![Emergency & Dispatch](docs/screenshots/02-emergency-dispatch.png)
+What it shows: Dropping an emergency location and auto-dispatching the nearest available ambulance based on real-time factors.
+
+### 3. Route Intelligence
+![Route Intelligence](docs/screenshots/03-route-intelligence.png)
+What it shows: Multi-factor scoring analyzing distance, current traffic, and incidents to determine the best route.
+
+### 4. Judge Demo
+![Judge Demo](docs/screenshots/11-judge-demo.png)
+What it shows: Automated sequence rapidly showcasing the core platform features for judging.
+
+### 5. Live Explain
+![Live Explain](docs/screenshots/12-live-explain.png)
+What it shows: Interactive step-by-step technical breakdown of the underlying AI dispatch decisions.
 
 ## 13. PROJECT WORKFLOW
 
