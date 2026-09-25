@@ -146,7 +146,7 @@ async function fetchRoadRoute(waypoints, profile = 'driving-car') {
     const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': '5b3ce3597851110001cf6248a5a5a5ef9c3a4372b5efdf11d5a51ef8' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': import.meta.env.VITE_ORS_API_KEY },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -255,7 +255,7 @@ async function fetchOrsAvoidRoute(f, m, t, avoidFeatures) {
     const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': '5b3ce3597851110001cf6248a5a5a5ef9c3a4372b5efdf11d5a51ef8' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': import.meta.env.VITE_ORS_API_KEY },
       body: JSON.stringify(body),
       signal: controller.signal,
     });

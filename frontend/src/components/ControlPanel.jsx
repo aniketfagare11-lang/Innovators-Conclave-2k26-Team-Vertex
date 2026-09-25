@@ -10,8 +10,8 @@ function Toggle({ label, icon, enabled, onChange, color = '#00d4ff', disabled = 
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 12px',
         borderRadius: 7,
-        border: `1px solid ${enabled ? color + '66' : 'var(--border)'}`,
-        background: enabled ? `${color}12` : 'var(--surface)',
+        border: `1px solid ${enabled ? color + '66' : '#0f3060'}`,
+        background: enabled ? `${color}12` : '#071525',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.2s',
         opacity: disabled ? 0.5 : 1,
@@ -29,7 +29,7 @@ function Toggle({ label, icon, enabled, onChange, color = '#00d4ff', disabled = 
         <div style={{
           position: 'absolute', top: 2, left: enabled ? 17 : 2,
           width: 13, height: 13, borderRadius: '50%',
-          background: enabled ? 'var(--bg)' : 'var(--muted)',
+          background: enabled ? '#040c18' : '#4a7090',
           transition: 'left 0.25s',
         }} />
       </div>
@@ -50,6 +50,8 @@ export default function ControlPanel({
   trafficEnabled, onTrafficToggle,
   emergencyMode, onEmergencyModeToggle,
   onSimulateTraffic,
+  onSimulateIncident,
+  onResolveIncidents,
   onDispatch,
   onReset,
   simulationSpeed,
@@ -57,13 +59,16 @@ export default function ControlPanel({
   phase,
   selectedAmbulance,
   selectedHospital,
+  onActivateCorridor,
+  onDeactivateCorridor,
+  corridorActive,
 }) {
   const { theme, toggleTheme } = useContext(SimulationContext);
   const canDispatch = phase === 'located' && selectedAmbulance && selectedHospital;
   const isActive = phase === 'enroute' || phase === 'arrived';
 
   return (
-    <div className="flex flex-wrap items-center gap-2 shrink-0 px-3 py-2 border-t border-gray-200 dark:border-brand-border bg-white dark:bg-gradient-to-r dark:from-[#040c18] dark:via-[#071525] dark:to-[#040c18] transition-colors duration-300">
+    <div className="glass-card p-3 flex flex-col gap-3">
       {/* Toggles */}
       <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
         <Toggle label="TRAFFIC" icon="🚦" enabled={trafficEnabled} onChange={onTrafficToggle} color="#00d4ff" />
@@ -109,6 +114,110 @@ export default function ControlPanel({
         ⚡ SPIKE TRAFFIC
       </button>
 
+      {/* Incident Controls */}
+      <div className="flex flex-wrap gap-2">
+      <button
+        onClick={() => onSimulateIncident && onSimulateIncident('ACCIDENT')}
+        disabled={!isActive}
+        style={{
+          padding: '7px 12px',
+          borderRadius: 7,
+          border: '1px solid #ff333333',
+          background: '#ff333312',
+          color: '#ff3333',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10, cursor: isActive ? 'pointer' : 'not-allowed',
+          transition: 'all 0.2s',
+          letterSpacing: '0.04em',
+          opacity: isActive ? 1 : 0.4,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        💥 ACCIDENT
+      </button>
+
+      <button
+        onClick={() => onSimulateIncident && onSimulateIncident('ROAD_BLOCK')}
+        disabled={!isActive}
+        style={{
+          padding: '7px 12px',
+          borderRadius: 7,
+          border: '1px solid #ffd60033',
+          background: '#ffd60012',
+          color: '#ffd600',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10, cursor: isActive ? 'pointer' : 'not-allowed',
+          transition: 'all 0.2s',
+          letterSpacing: '0.04em',
+          opacity: isActive ? 1 : 0.4,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        🚧 ROAD BLOCK
+      </button>
+      
+      <button
+        onClick={onResolveIncidents}
+        style={{
+          padding: '7px 12px',
+          borderRadius: 7,
+          border: '1px solid #00ff8833',
+          background: '#00ff8812',
+          color: '#00ff88',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10, cursor: 'pointer',
+          transition: 'all 0.2s',
+          letterSpacing: '0.04em',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ✅ RESOLVE
+      </button>
+      </div>
+      
+      {/* Corridor Controls */}
+      <div className="flex flex-wrap gap-2">
+      {!corridorActive ? (
+        <button
+          onClick={onActivateCorridor}
+          disabled={!isActive}
+          style={{
+            padding: '7px 12px',
+            borderRadius: 7,
+            border: '1px solid #00ff8833',
+            background: '#00ff8812',
+            color: '#00ff88',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10, cursor: isActive ? 'pointer' : 'not-allowed',
+            transition: 'all 0.2s',
+            letterSpacing: '0.04em',
+            opacity: isActive ? 1 : 0.4,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🟢 CORRIDOR
+        </button>
+      ) : (
+        <button
+          onClick={onDeactivateCorridor}
+          style={{
+            padding: '7px 12px',
+            borderRadius: 7,
+            border: '1px solid #1e3a5f',
+            background: '#040c18',
+            color: '#c8e0f4',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10, cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '0.04em',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🔴 CORRIDOR
+        </button>
+      )}
+      </div>
+
       {/* Dispatch / Reset */}
       <div style={{ display: 'flex', gap: 6 }}>
         {!isActive && (
@@ -134,9 +243,9 @@ export default function ControlPanel({
           style={{
             padding: '9px 14px',
             borderRadius: 8,
-            border: '1px solid var(--border)',
-            background: 'var(--surface)',
-            color: 'var(--muted)',
+            border: '1px solid #0f3060',
+            background: '#071525',
+            color: '#4a7090',
             fontFamily: 'var(--font-display)',
             fontSize: 10, cursor: 'pointer',
             transition: 'all 0.2s',
@@ -156,7 +265,7 @@ export default function ControlPanel({
           onChange={e => onSimulationSpeedChange(Number(e.target.value))}
           disabled={isActive}
           style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
+            background: '#071525', border: '1px solid #0f3060', color: '#c8e0f4',
             padding: '4px 6px', borderRadius: '4px', fontSize: 10, outline: 'none',
             cursor: isActive ? 'not-allowed' : 'pointer'
           }}

@@ -5,11 +5,14 @@ import EmergencyInput from './components/EmergencyInput';
 import AmbulancePanel from './components/AmbulancePanel';
 import HospitalPanel from './components/HospitalPanel';
 import RouteSelector from './components/RouteSelector';
+import RightAIPanel from './components/RightAIPanel';
 import ControlPanel from './components/ControlPanel';
 import AlertSystem from './components/AlertSystem';
-import Dashboard from './components/Dashboard';
 import SOSOverlay from './components/SOSOverlay';
 import DispatchTimeline from './components/DispatchTimeline';
+import AnalyticsPanel from './components/AnalyticsPanel';
+import DemoOverlay from './components/DemoOverlay';
+
 
 import { scoreAmbulance, scoreHospital } from './utils/aiEngine';
 import {
@@ -19,10 +22,37 @@ import {
   fetchHospitalsFromBackend,
 } from './utils/geoUtils';
 import {
-  generateTrafficConditions, simulateTrafficIncrease,
+  generateTrafficConditions,
   generateTrafficSegments, shouldReroute,
   fetchRealTimeTraffic, fetchFlowSegment, levelFromFlowSegment, TRAFFIC_LEVELS,
 } from './utils/trafficSimulator';
+
+import {
+  createTrafficState,
+  triggerTrafficSpike,
+  getRouteTraffic,
+  adaptStateToLegacyConditions
+} from './utils/trafficIntelligence';
+
+import {
+  createIncident,
+  getIncidentImpact,
+  applyIncidentImpact,
+  INCIDENT_STATUS
+} from './utils/incidentManager';
+
+import {
+  predictFutureTraffic,
+  appendTrafficHistory
+} from './utils/aiTrafficPrediction';
+
+import { rankRoutes } from './utils/routeScoring';
+import { evaluateReroute, formatRerouteTimelineEvent, REROUTE_CONFIG } from './utils/reroutingEngine';
+
+import {
+  generateCorridorIntersections,
+  updateCorridorStatus
+} from './utils/emergencyCorridor';
 
 // ─── App ───────────────────────────────────────────────────────────
 export default function App() {
@@ -58,7 +88,25 @@ export default function App() {
   // ── Traffic & mode ───────────────────────────────────────────────
   const [trafficEnabled, setTrafficEnabled]         = useState(true);
   const [emergencyMode, setEmergencyMode]           = useState(false);
+  const [globalTrafficState, setGlobalTrafficState] = useState(createTrafficState(0.0));
   const [trafficConditions, setTrafficConditions]   = useState({});
+  const [routeTrafficInfo, setRouteTrafficInfo]     = useState(null);
+  
+  // ── Incidents ────────────────────────────────────────────────────
+  const [incidents, setIncidents]                   = useState([]);
+  const [incidentImpactInfo, setIncidentImpactInfo] = useState(null);
+
+  // ── AI Prediction ────────────────────────────────────────────────
+  const [trafficHistory, setTrafficHistory]         = useState([createTrafficState(0.0)]);
+  const [trafficPrediction, setTrafficPrediction]   = useState(null);
+  
+  // ── AI Route Scoring ─────────────────────────────────────────────
+  const [scoredRoutes, setScoredRoutes]             = useState([]);
+
+  // ── Emergency Corridor ───────────────────────────────────────────
+  const [corridorActive, setCorridorActive]         = useState(false);
+  const [corridorIntersections, setCorridorIntersections] = useState([]);
+
   const [simulationSpeed, setSimulationSpeed]       = useState(60);
 
   // ── Stats ─────────────────────────────────────────────────────────
@@ -78,6 +126,14 @@ export default function App() {
 
   // ── Rerouting state ─────────────────────────────────────
   const [rerouteCount, setRerouteCount]             = useState(0);
+  const [lastRerouteTime, setLastRerouteTime]       = useState(0);
+  const [rerouteStatus, setRerouteStatus]           = useState('STABLE ✓');
+
+  // ── Presentation Mode ───────────────────────────────────────────
+  const [presentationMode, setPresentationMode]     = useState(true);
+  const [simControlsOpen, setSimControlsOpen]       = useState(false);
+  const [analyticsExpanded, setAnalyticsExpanded]   = useState(false);
+
 
   // ── Dispatch Timeline ─────────────────────────────────────────────
   const TIMELINE_STEPS = [
@@ -98,6 +154,15 @@ export default function App() {
   const trafficTimerRef    = useRef(null);
   const patientPickedUpRef = useRef(false);
   const pickupIndexRef     = useRef(0);
+  const corridorActiveRef  = useRef(false);
+
+  // ── DEMO MODE ─────────────────────────────────────────────
+  const [demoActive, setDemoActive] = useState(false);
+  const [demoMode, setDemoMode] = useState('JUDGE'); // 'JUDGE' | 'LIVE'
+  const [demoPhase, setDemoPhase] = useState('IDLE');
+  const demoPhaseRef = useRef('IDLE');
+  const [demoNextPhase, setDemoNextPhase] = useState('EMERGENCY_CREATED');
+  const [demoProgress, setDemoProgress] = useState(0);
 
   // ── Clock tick ───────────────────────────────────────────────────
   useEffect(() => {
@@ -185,8 +250,14 @@ export default function App() {
     addAlert('📍 Snapping ambulance positions to road network...', 'info');
     const newAmbs = await generateRoadAmbulances(loc.lat, loc.lng, 6, fetchedHospitals);
 
-    // Traffic conditions
-    const traffic = generateTrafficConditions(newAmbs, fetchedHospitals, undefined, realTraffic);
+    // Traffic conditions (Normalized Intelligence Layer)
+    const baseState = createTrafficState(0.0, realTraffic && Object.keys(realTraffic).length > 0 ? realTraffic : null);
+    setGlobalTrafficState(baseState);
+    const newHist = [baseState];
+    setTrafficHistory(newHist);
+    setTrafficPrediction(predictFutureTraffic(newHist, [], 15));
+    
+    const traffic = adaptStateToLegacyConditions(baseState, newAmbs, fetchedHospitals);
     setTrafficConditions(traffic);
 
     // AI scoring
@@ -253,12 +324,27 @@ export default function App() {
     // Store real metrics from routing APIs
     setRouteMetrics(metrics || { normal: null, optimal: null, alternative: null });
 
-    // Active route depends on user's chosen mode
-    const activeRoute = activeMode === 'normal'
-      ? (finalShortest || finalOptimal)
-      : activeMode === 'alternative'
-        ? (finalAlternative || finalOptimal)
-        : (finalOptimal || finalShortest);
+    // Step 9: Use new Route Scoring Engine
+    const context = {
+      globalTrafficState,
+      incidents,
+      trafficPrediction
+    };
+    const candidates = [];
+    if (finalOptimal) candidates.push({ id: 'optimal', waypoints: finalOptimal, distanceKm: metrics?.optimal?.distanceKm, durationMin: metrics?.optimal?.durationMin });
+    if (finalShortest) candidates.push({ id: 'normal', waypoints: finalShortest, distanceKm: metrics?.normal?.distanceKm, durationMin: metrics?.normal?.durationMin });
+    if (finalAlternative) candidates.push({ id: 'alternative', waypoints: finalAlternative, distanceKm: metrics?.alternative?.distanceKm, durationMin: metrics?.alternative?.durationMin });
+
+    const ranked = rankRoutes(candidates, context);
+    setScoredRoutes(ranked);
+
+    // Pick recommended if no mode explicitly provided
+    let bestId = ranked.length > 0 ? ranked[0].id : 'optimal';
+    const activeModeResolved = currentRouteMode ?? bestId;
+
+    const activeScored = ranked.find(r => r.id === activeModeResolved);
+    const activeRoute = activeScored ? activeScored.originalRoute : (finalOptimal || finalShortest);
+
     const pIdx = getPickupIndex(activeRoute);
 
     routeRef.current           = activeRoute;
@@ -271,12 +357,20 @@ export default function App() {
     setAlternativeRoute(finalAlternative || []);
     setRoute(activeRoute);
     setAlternateRoutes([]);
-    setActiveRouteType(activeMode);
+    setActiveRouteType(activeModeResolved);
+    setRouteMode(activeModeResolved);
     setAmbulancePosition(activeRoute[startIdx]);
     setPickupIndex(pIdx);
     setRouteProgress(0);
     setPhase('enroute');
     setTrafficSegments(generateTrafficSegments(activeRoute, traffic, mode));
+    
+    // Evaluate normalized route traffic assessment
+    let assessment = getRouteTraffic(activeRoute, globalTrafficState);
+    const impact = getIncidentImpact(activeRoute, incidents);
+    setIncidentImpactInfo(impact);
+    assessment = applyIncidentImpact(assessment, impact);
+    setRouteTrafficInfo(assessment);
 
     const distAmbToEmerg  = calculateDistance(amb.lat, amb.lng, loc.lat, loc.lng);
     const distEmergToHosp = calculateDistance(loc.lat, loc.lng, hosp.lat, hosp.lng);
@@ -308,6 +402,15 @@ export default function App() {
 
     if (animRef.current) clearInterval(animRef.current);
     animRef.current = setInterval(() => {
+      // Pause movement during demo until explicitly in AMBULANCE_MOVING or later
+      if (presentationMode) {
+        const step = DEMO_STEPS.indexOf(demoPhaseRef.current);
+        const movingStep = DEMO_STEPS.indexOf('AMBULANCE_MOVING');
+        if (step > 0 && step < movingStep) {
+           return; // Skip animation tick
+        }
+      }
+
       idxRef.current++;
       const idx = idxRef.current;
       const currentRoute = routeRef.current;
@@ -337,6 +440,10 @@ export default function App() {
       setAmbulancePosition(currentRoute[idx]);
       setRouteProgress(Math.min(99, Math.floor((idx / totalPts) * 100)));
       setEta(etaBaseRef.current * Math.max(0, 1 - idx / totalPts));
+      
+      if (corridorActiveRef.current) {
+        setCorridorIntersections(prev => updateCorridorStatus(prev, currentRoute[idx]));
+      }
 
       if (idx === Math.floor(totalPts * 0.3) && !patientPickedUpRef.current)  addAlert('🚑 Approaching patient pickup point', 'info');
       if (idx >= targetPickupIdx && !patientPickedUpRef.current) {
@@ -368,9 +475,19 @@ export default function App() {
       if (optimal?.length     > 10) setOptimalRoute(optimal);
       if (alternative?.length > 10) setAlternativeRoute(alternative);
       if (metrics) setRouteMetrics(metrics);
+      
+      // Score routes immediately so they show in UI before dispatch
+      const context = { globalTrafficState, incidents, trafficPrediction };
+      const candidates = [];
+      if (optimal?.length > 10) candidates.push({ id: 'optimal', waypoints: optimal, distanceKm: metrics?.optimal?.distanceKm, durationMin: metrics?.optimal?.durationMin });
+      if (shortest?.length > 10) candidates.push({ id: 'normal', waypoints: shortest, distanceKm: metrics?.normal?.distanceKm, durationMin: metrics?.normal?.durationMin });
+      if (alternative?.length > 10) candidates.push({ id: 'alternative', waypoints: alternative, distanceKm: metrics?.alternative?.distanceKm, durationMin: metrics?.alternative?.durationMin });
+      
+      const ranked = rankRoutes(candidates, context);
+      setScoredRoutes(ranked);
     }, 400);
     return () => clearTimeout(previewRoutesRef.current);
-  }, [phase, selectedAmbulance, selectedHospital, emergencyLocation]);
+  }, [phase, selectedAmbulance, selectedHospital, emergencyLocation, globalTrafficState, incidents, trafficPrediction]);
 
   // ── Manual dispatch wrapper ────────────────────────────────────────
   const handleDispatch = useCallback(() => {
@@ -379,8 +496,14 @@ export default function App() {
   }, [emergencyLocation, selectedAmbulance, selectedHospital, trafficConditions, emergencyMode, emergencyType, executeDispatch, routeMode]);
 
   // ── Seamless rerouting helper ───────────────────────────────────────
-  const performReroute = useCallback(async (conditions) => {
+  const performReroute = useCallback(async (conditions, force = false, triggerReason = '') => {
     if (phase !== 'enroute' || !selectedHospital) return;
+
+    // Check cooldown unless forced
+    const nowMs = Date.now();
+    if (!force && nowMs - lastRerouteTime < REROUTE_CONFIG.COOLDOWN_MS) {
+       return; // Cooldown active
+    }
 
     const currentIdx = idxRef.current;
     const currentRoute = routeRef.current;
@@ -389,10 +512,12 @@ export default function App() {
     const currentPos = currentRoute[currentIdx];
     if (!currentPos) return;
 
-    addAlert('⚠️ Traffic surge detected — recalculating road path...', 'warning');
+    addAlert('⚠️ Evaluating route alternatives...', 'info');
 
     const isPickedUp = patientPickedUpRef.current || currentIdx >= pickupIndexRef.current;
     let newRemainingPath = null;
+    let newActiveType = activeRouteType;
+    let metricsData = null;
 
     if (isPickedUp) {
       // Patient already picked up: route directly from current ambulance position to hospital
@@ -401,12 +526,47 @@ export default function App() {
     } else if (emergencyLocation) {
       // Patient not yet picked up: route from current position through emergency location to hospital
       const dual = await generateDualRoutes(currentPos, [emergencyLocation.lat, emergencyLocation.lng], [selectedHospital.lat, selectedHospital.lng]);
-      newRemainingPath = dual.optimal || dual.shortest;
+      
+      const context = { globalTrafficState, incidents, trafficPrediction };
+      const candidates = [];
+      if (dual.optimal) candidates.push({ id: 'optimal', waypoints: dual.optimal, distanceKm: dual.metrics?.optimal?.distanceKm, durationMin: dual.metrics?.optimal?.durationMin });
+      if (dual.shortest) candidates.push({ id: 'normal', waypoints: dual.shortest, distanceKm: dual.metrics?.normal?.distanceKm, durationMin: dual.metrics?.normal?.durationMin });
+      if (dual.alternative) candidates.push({ id: 'alternative', waypoints: dual.alternative, distanceKm: dual.metrics?.alternative?.distanceKm, durationMin: dual.metrics?.alternative?.durationMin });
+      
+      if (candidates.length > 0) {
+        const ranked = rankRoutes(candidates, context);
+        setScoredRoutes(ranked); // Update UI
+        
+        const evalResult = evaluateReroute(ranked, activeRouteType);
+        setRerouteStatus(evalResult.status || 'STABLE ✓');
+        
+        if (!evalResult.shouldReroute && !force) {
+          // No significant improvement, stay on current route
+          addAlert(`ℹ️ Reroute skipped: ${evalResult.reason}`, 'info');
+          return;
+        }
+        
+        // We are rerouting!
+        newActiveType = evalResult.newRecommendedId;
+        newRemainingPath = ranked.find(r => r.id === newActiveType)?.originalRoute;
+        
+        const reasonMsg = force ? `Forced: ${triggerReason}` : evalResult.reason;
+        addAlert(`🔄 REROUTING: ${reasonMsg}`, 'success');
+        
+        // Record in timeline
+        setDispatchTimeline(prev => [...prev, formatRerouteTimelineEvent(activeRouteType, newActiveType, evalResult.improvement || 0)]);
+      }
     }
 
-    if (!newRemainingPath || newRemainingPath.length < 2) return;
+    if (!Array.isArray(newRemainingPath) || newRemainingPath.length < 2) {
+       addAlert('⚠️ REROUTE FAILED: Continuing on current route.', 'warning');
+       return;
+    }
 
     setRerouteCount(c => c + 1);
+    setLastRerouteTime(Date.now());
+    setActiveRouteType(newActiveType);
+    setRouteMode(newActiveType);
 
     // Preserve already traveled path and splice new remaining path onto it
     const traveledPath = currentRoute.slice(0, currentIdx + 1);
@@ -418,6 +578,18 @@ export default function App() {
     setOptimalRoute(splicedRoute);
     setRoute(splicedRoute);
     setTrafficSegments(generateTrafficSegments(splicedRoute, conditions || trafficConditions, emergencyMode));
+    
+    if (corridorActiveRef.current) {
+      setCorridorIntersections(generateCorridorIntersections(splicedRoute, 0.4));
+      addAlert('🔄 Corridor regenerated for new road path', 'info');
+    }
+    
+    // Re-evaluate assessment on new route
+    let assessment = getRouteTraffic(splicedRoute, globalTrafficState);
+    const impact = getIncidentImpact(splicedRoute, incidents);
+    setIncidentImpactInfo(impact);
+    assessment = applyIncidentImpact(assessment, impact);
+    setRouteTrafficInfo(assessment);
 
     const newOptMin = etaBaseRef.current * 0.85;
     etaBaseRef.current = newOptMin;
@@ -599,11 +771,25 @@ export default function App() {
 
   // ── Traffic spike ──────────────────────────────────────────────────
   const handleSimulateTraffic = useCallback(() => {
-    const spiked = simulateTrafficIncrease(trafficConditions);
+    const newState = triggerTrafficSpike(globalTrafficState);
+    setGlobalTrafficState(newState);
+    
+    setTrafficHistory(prev => {
+      const newHist = appendTrafficHistory(prev, newState);
+      setTrafficPrediction(predictFutureTraffic(newHist, incidents, 15));
+      return newHist;
+    });
+    
+    const spiked = adaptStateToLegacyConditions(newState, ambulances, localHospitals);
     setTrafficConditions(spiked);
-    addAlert('⚡ Traffic surge detected! Recalculating route...', 'warning');
+    
+    addAlert(`⚡ Traffic surge detected! Status: ${newState.severity}`, 'warning');
+    
     if (phase === 'enroute' && route.length > 0) {
       setTrafficSegments(generateTrafficSegments(routeRef.current, spiked, emergencyMode));
+      let assessment = getRouteTraffic(routeRef.current, newState);
+      assessment = applyIncidentImpact(assessment, incidentImpactInfo);
+      setRouteTrafficInfo(assessment);
       performReroute(spiked);
     }
     if (phase === 'located' && emergencyLocation) {
@@ -612,7 +798,83 @@ export default function App() {
       setSelectedHospital(newH[0]);
       addAlert('🔄 Hospital ranking updated due to traffic changes', 'info');
     }
-  }, [trafficConditions, phase, emergencyLocation, emergencyType, emergencyMode, localHospitals, route, rankHospitals, addAlert, performReroute]);
+  }, [globalTrafficState, ambulances, localHospitals, phase, route, emergencyMode, emergencyLocation, emergencyType, rankHospitals, addAlert, performReroute, incidentImpactInfo]);
+
+  // ── Incident Management ────────────────────────────────────────────
+  const handleSimulateIncident = useCallback((type) => {
+    if (phase !== 'enroute' || !routeRef.current || routeRef.current.length < 5) {
+      addAlert('⚠️ Dispatch ambulance first to simulate route incidents.', 'warning');
+      return;
+    }
+    
+    const currentIdx = idxRef.current;
+    const remaining = routeRef.current.length - currentIdx;
+    if (remaining < 5) return;
+    
+    // Deterministic placement ahead on route
+    const offset = Math.max(2, Math.floor(remaining * 0.4));
+    const targetPt = routeRef.current[currentIdx + offset];
+    
+    const severity = type === 'ACCIDENT' ? 'HIGH' : type === 'ROAD_BLOCK' ? 'MEDIUM' : 'LOW';
+    const newInc = createIncident(type, targetPt[0], targetPt[1], severity);
+    
+    setIncidents(prev => {
+      const updated = [...prev, newInc];
+      const impact = getIncidentImpact(routeRef.current, updated);
+      setIncidentImpactInfo(impact);
+      
+      // Update prediction
+      setTrafficPrediction(predictFutureTraffic(trafficHistory, updated, 15));
+      
+      if (corridorActiveRef.current && impact && impact.affected) {
+        addAlert(`⚠ INCIDENT AFFECTED: Virtual corridor disrupted by ${newInc.title}`, 'danger');
+      }
+      
+      if (impact && impact.affected) {
+        addAlert(`💥 ${newInc.title} reported on active route!`, 'danger');
+        setRouteTrafficInfo(prevInfo => {
+           const base = getRouteTraffic(routeRef.current, globalTrafficState);
+           return applyIncidentImpact(base, impact);
+        });
+        
+        // Trigger rerouting automatically for severe incidents (unless in presentation mode where we want explicit steps)
+        if (!presentationMode && (impact.severity === 'HIGH' || impact.severity === 'CRITICAL')) {
+           setTimeout(() => performReroute(trafficConditions, true, `${impact.severity} incident detected`), 1000);
+        }
+      } else {
+        addAlert(`⚠️ ${newInc.title} reported nearby.`, 'warning');
+      }
+      return updated;
+    });
+  }, [phase, globalTrafficState, trafficConditions, addAlert, performReroute]);
+
+  const handleResolveIncidents = useCallback(() => {
+    setIncidents([]);
+    setIncidentImpactInfo(null);
+    setTrafficPrediction(predictFutureTraffic(trafficHistory, [], 15));
+    addAlert('✅ All incidents cleared.', 'success');
+    if (phase === 'enroute') {
+      const base = getRouteTraffic(routeRef.current, globalTrafficState);
+      setRouteTrafficInfo(base);
+    }
+  }, [phase, globalTrafficState, addAlert]);
+
+  const handleActivateCorridor = useCallback(() => {
+    if (!routeRef.current || routeRef.current.length === 0) return;
+    corridorActiveRef.current = true;
+    setCorridorActive(true);
+    setCorridorIntersections(generateCorridorIntersections(routeRef.current, 0.4));
+    
+    const t = new Date().toLocaleTimeString('en-IN');
+    addAlert(`🟢 SIMULATED EMERGENCY CORRIDOR ACTIVATED at ${t}`, 'success');
+  }, [addAlert]);
+
+  const handleDeactivateCorridor = useCallback(() => {
+    corridorActiveRef.current = false;
+    setCorridorActive(false);
+    setCorridorIntersections([]);
+    addAlert('🔴 Emergency corridor deactivated', 'info');
+  }, [addAlert]);
 
   // ── Reset ──────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
@@ -631,8 +893,144 @@ export default function App() {
     setEta(null); setDistance(null); setNormalTime(null); setOptimizedTime(null);
     setAlerts([]); setEmergencyMode(false); setRerouteCount(0); setActiveRouteType('optimal'); setRouteMode('optimal'); setRouteMetrics({ normal: null, optimal: null, alternative: null });
     setDispatchTimeline([]); setHospitalLoading(false); setLocalHospitals([]);
+    setIncidents([]); setIncidentImpactInfo(null);
+    setTrafficHistory([createTrafficState(0.0)]); setTrafficPrediction(null);
+    setScoredRoutes([]);
+    corridorActiveRef.current = false; setCorridorActive(false); setCorridorIntersections([]);
     addAlert('🔄 System reset — ready for new emergency', 'info');
   }, [addAlert]);
+
+  const DEMO_STEPS = [
+    'IDLE', 
+    'EMERGENCY_CREATED', 
+    'ROUTES_READY', 
+    'ROUTE_RECOMMENDED', 
+    'CORRIDOR_ACTIVE', 
+    'AMBULANCE_MOVING', 
+    'TRAFFIC_SPIKE', 
+    'INCIDENT_CREATED', 
+    'REROUTING', 
+    'NEW_CORRIDOR', 
+    'COMPLETED'
+  ];
+
+  const getStepIndex = (phase) => DEMO_STEPS.indexOf(phase);
+
+  const executePhaseAction = useCallback((phaseName) => {
+    switch(phaseName) {
+      case 'EMERGENCY_CREATED':
+        handleMapClick({ lat: 12.9716, lng: 77.5946 });
+        break;
+      case 'ROUTES_READY':
+        // Wait for API to resolve
+        break;
+      case 'ROUTE_RECOMMENDED':
+        handleDispatch();
+        break;
+      case 'CORRIDOR_ACTIVE':
+        handleActivateCorridor();
+        break;
+      case 'AMBULANCE_MOVING':
+        // Handled naturally by timeline logic
+        break;
+      case 'TRAFFIC_SPIKE':
+        handleSimulateTraffic();
+        break;
+      case 'INCIDENT_CREATED':
+        handleSimulateIncident('ACCIDENT', 6);
+        break;
+      case 'REROUTING':
+        performReroute(trafficConditions, true, 'High severity incident detected');
+        break;
+      case 'NEW_CORRIDOR':
+        handleActivateCorridor();
+        break;
+      case 'COMPLETED':
+        setDemoActive(false);
+        break;
+      default:
+        break;
+    }
+  }, [handleMapClick, handleDispatch, handleActivateCorridor, handleSimulateTraffic, handleSimulateIncident, performReroute, trafficConditions]);
+
+  const handleNextDemoStep = useCallback(() => {
+    const currentIndex = getStepIndex(demoPhase);
+    if (currentIndex < DEMO_STEPS.length - 1) {
+      const nextPhase = DEMO_STEPS[currentIndex + 1];
+      const nextNextPhase = DEMO_STEPS[currentIndex + 2] || '';
+      setDemoPhase(nextPhase);
+      demoPhaseRef.current = nextPhase;
+      setDemoNextPhase(nextNextPhase);
+      setDemoProgress(Math.floor(((currentIndex + 1) / (DEMO_STEPS.length - 1)) * 100));
+      executePhaseAction(nextPhase);
+    }
+  }, [demoPhase, executePhaseAction]);
+
+  const handleStartDemo = useCallback(() => {
+    setDemoActive(true);
+    setPresentationMode(true);
+    setSimulationSpeed(15);
+    if (demoPhase === 'IDLE' || demoPhase === 'COMPLETED') {
+      handleReset();
+      setDemoPhase('EMERGENCY_CREATED');
+      demoPhaseRef.current = 'EMERGENCY_CREATED';
+      setDemoNextPhase('ROUTES_READY');
+      setDemoProgress(5);
+      executePhaseAction('EMERGENCY_CREATED');
+    }
+  }, [demoPhase, handleReset, executePhaseAction]);
+
+  const handlePauseDemo = useCallback(() => setDemoActive(false), []);
+  const handleResetDemo = useCallback(() => {
+    setDemoActive(false);
+    setDemoPhase('IDLE');
+    demoPhaseRef.current = 'IDLE';
+    setDemoNextPhase('EMERGENCY_CREATED');
+    setDemoProgress(0);
+    setSimulationSpeed(60);
+    handleReset();
+  }, [handleReset]);
+
+  const handlePrevDemoStep = useCallback(() => {
+    // PREVIOUS is only allowed before state commits like ROUTE_RECOMMENDED (which fires dispatch).
+    // The prompt requested limiting PREVIOUS to "where safe" to prevent state corruption.
+    const safePhases = ['ROUTES_READY', 'ROUTE_RECOMMENDED'];
+    if (safePhases.includes(demoPhase)) {
+      const currentIndex = getStepIndex(demoPhase);
+      const prevPhase = DEMO_STEPS[currentIndex - 1];
+      setDemoPhase(prevPhase);
+      demoPhaseRef.current = prevPhase;
+      setDemoNextPhase(demoPhase); // The current phase becomes the next phase
+      setDemoProgress(Math.floor(((currentIndex - 1) / (DEMO_STEPS.length - 1)) * 100));
+    }
+  }, [demoPhase]);
+
+  // JUDGE MODE AUTOMATION TIMING
+  useEffect(() => {
+    if (!demoActive || demoMode === 'LIVE') return;
+    
+    // Controlled 5-8 second presentation pacing.
+    const delays = {
+      'EMERGENCY_CREATED': 5000,
+      'ROUTES_READY': 5000,
+      'ROUTE_RECOMMENDED': 6000,
+      'CORRIDOR_ACTIVE': 6000,
+      'AMBULANCE_MOVING': 7000,
+      'TRAFFIC_SPIKE': 5000,
+      'INCIDENT_CREATED': 5000,
+      'REROUTING': 6000,
+      'NEW_CORRIDOR': 5000,
+    };
+    
+    const currentIndex = getStepIndex(demoPhase);
+    if (currentIndex >= 1 && currentIndex < DEMO_STEPS.length - 1) {
+       const delay = delays[demoPhase] || 5000;
+       const timer = setTimeout(() => {
+          handleNextDemoStep();
+       }, delay);
+       return () => clearTimeout(timer);
+    }
+  }, [demoActive, demoMode, demoPhase, handleNextDemoStep]);
 
   // ── Emergency type change ─────────────────────────────────────────
   const handleEmergencyTypeChange = useCallback((type) => {
@@ -655,84 +1053,136 @@ export default function App() {
   // ── Mobile sidebar toggle ─────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ── Emergency Type Collapsible ────────────────────────────────────
+  const [emergencyControlsOpen, setEmergencyControlsOpen] = useState(false);
+
   // ── SOS overlay state ─────────────────────────────────────────────
   const [sosVisible, setSosVisible]       = useState(false);
   const sosPendingRef                     = useRef(null); // stores the pending dispatch args
 
   // ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden font-body bg-gray-50 dark:bg-brand-bg text-gray-900 dark:text-brand-text transition-colors duration-300">
+    <div className={`flex flex-col h-screen w-screen overflow-hidden font-body bg-brand-bg text-brand-text transition-colors duration-300 relative ${presentationMode ? 'presentation-mode' : ''}`}>
+      {/* Demo overlay moved to Right Panel */}
       <SOSOverlay
         visible={sosVisible}
         onCancel={handleSOSCancel}
         onConfirm={handleSOSConfirm}
       />
-      <Header phase={phase} currentTime={currentTime} onMenuToggle={() => setSidebarOpen(o => !o)} />
+      <Header 
+        phase={phase} 
+        currentTime={currentTime} 
+        onMenuToggle={() => setSidebarOpen(o => !o)} 
+        presentationMode={presentationMode}
+        onPresentationModeToggle={() => setPresentationMode(p => !p)}
+      />
 
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
+        
+        {/* ── Top 3-Column Area ─────────────────────────────────────── */}
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
         {/* ── Mobile overlay backdrop ──────────────────────────────── */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-[200] md:hidden"
-            onClick={() => setSidebarOpen(false)}
+            className={`fixed inset-0 bg-black/50 z-[200] md:hidden`}
+            onClick={() => { setSidebarOpen(false); }}
           />
         )}
 
-        {/* ── Left sidebar ────────────────────────────────────────── */}
+        {/* ── Left Sidebar: Controls ────────────────────────────── */}
         <div className={`
-          fixed md:relative inset-y-0 left-0 z-[300] md:z-auto
-          w-80 shrink-0 flex flex-col overflow-hidden
-          bg-white dark:bg-brand-bg border-r border-gray-200 dark:border-brand-border
-          transition-transform duration-300 ease-in-out
+          inset-y-0 left-0 flex flex-col overflow-hidden
+          bg-brand-surface border-r border-brand-border
+          transition-transform duration-300 ease-in-out shrink-0
+          fixed md:relative z-[300] md:z-auto
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}>
-          {/* Mobile close button */}
+        `} style={{ width: '22%' }}>
           <div className="flex items-center justify-between px-3 pt-3 md:hidden">
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, color: '#4a7090', letterSpacing: '0.15em' }}>CONTROL PANEL</span>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              style={{ color: '#4a7090', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer' }}
-            >✕</button>
+            <span className="font-display text-[10px] text-brand-muted tracking-[0.15em] uppercase">CONTROL PANEL</span>
+            <button onClick={() => { setSidebarOpen(false); }} className="text-brand-muted text-lg bg-transparent border-none cursor-pointer">✕</button>
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 flex flex-col gap-2.5">
-            <EmergencyInput
-              emergencyType={emergencyType}
-              onChange={handleEmergencyTypeChange}
+
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 flex flex-col gap-3">
+            
+            {/* EMERGENCY CONTROLS (Collapsible) */}
+            <div className="glass-card p-3 flex flex-col gap-2">
+              <button 
+                onClick={() => setEmergencyControlsOpen(!emergencyControlsOpen)}
+                className="w-full flex items-center justify-between font-display text-[10px] text-brand-cyan tracking-widest uppercase hover:text-white transition-colors"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+              >
+                <span>{emergencyControlsOpen ? '[-]' : '[+]'} CREATE EMERGENCY</span>
+              </button>
+              
+              {emergencyControlsOpen && (
+                <div className="mt-2">
+                  <EmergencyInput emergencyType={emergencyType} onChange={handleEmergencyTypeChange} phase={phase} emergencyLocation={emergencyLocation} />
+                  <div className="text-center mt-2">
+                    <button 
+                      onClick={() => setEmergencyControlsOpen(false)}
+                      className="px-4 py-1.5 bg-[#0f3060] hover:bg-[#1a4a8a] text-[10px] uppercase tracking-widest rounded transition-colors text-white"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <AmbulancePanel ambulances={ambulances} selectedAmbulance={selectedAmbulance} onSelect={setSelectedAmbulance} trafficConditions={trafficConditions} phase={phase} />
+            
+            {/* INCIDENT MONITOR UI */}
+            <div className="glass-card p-3 flex flex-col gap-2">
+              <div className="font-display text-[10px] text-brand-muted tracking-widest uppercase flex items-center justify-between">
+                <span>Incident Monitor</span>
+                <span className={incidents.length > 0 ? "text-brand-red font-bold" : "text-brand-cyan"}>
+                  {incidents.length} ACTIVE
+                </span>
+              </div>
+              {incidents.length === 0 ? (
+                <div className="text-xs text-brand-muted italic text-center py-2 bg-black/20 rounded border border-brand-border/50">
+                  No active incidents
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {incidents.map(inc => (
+                    <div key={inc.id} className="flex flex-col gap-1 text-xs border-l-2 p-1.5 bg-black/20" 
+                         style={{ borderLeftColor: inc.severity === 'HIGH' ? '#ff9800' : inc.severity === 'CRITICAL' ? '#ff1744' : '#ffd600' }}>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold">{inc.title}</span>
+                        <span className="text-[9px] px-1 bg-brand-surface rounded">{inc.severity}</span>
+                      </div>
+                      <div className="text-brand-muted flex justify-between">
+                        <span>Impact: +{inc.estimatedDelay}m</span>
+                        {inc.simulated && <span className="text-brand-cyan text-[8px] uppercase">SIM</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <ControlPanel
+              trafficEnabled={trafficEnabled} onTrafficToggle={setTrafficEnabled}
+              emergencyMode={emergencyMode} onEmergencyModeToggle={handleEmergencyModeToggle}
+              simulationSpeed={simulationSpeed} onSimulationSpeedChange={setSimulationSpeed}
+              onSimulateTraffic={handleSimulateTraffic}
+              onSimulateIncident={handleSimulateIncident}
+              onResolveIncidents={handleResolveIncidents}
+              onActivateCorridor={handleActivateCorridor}
+              onDeactivateCorridor={handleDeactivateCorridor}
+              corridorActive={corridorActive}
+              onDispatch={handleDispatch}
+              onReset={handleReset}
               phase={phase}
-              emergencyLocation={emergencyLocation}
-            />
-            <AmbulancePanel
-              ambulances={ambulances}
               selectedAmbulance={selectedAmbulance}
-              onSelect={setSelectedAmbulance}
-              trafficConditions={trafficConditions}
-              phase={phase}
-            />
-            <HospitalPanel
-              rankedHospitals={rankedHospitals}
-              selectedHospital={selectedHospital}
-              onSelect={setSelectedHospital}
-              phase={phase}
-              loading={hospitalLoading}
-              emergencyType={emergencyType}
-            />
-            <RouteSelector
-              routeMode={routeMode}
-              onChange={setRouteMode}
-              phase={phase}
-              selectedHospital={selectedHospital}
-              trafficConditions={trafficConditions}
-              routeMetrics={routeMetrics}
-            />
-            <DispatchTimeline
-              steps={dispatchTimeline}
-              phase={phase}
             />
           </div>
         </div>
 
         {/* ── Map area ─────────────────────────────────────────────── */}
-        <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 relative shrink-0" style={{ width: '56%' }}>
+          <div className="w-full relative overflow-hidden flex-1 h-full">
           <MapView
             emergencyLocation={emergencyLocation}
             ambulances={ambulances}
@@ -756,23 +1206,16 @@ export default function App() {
             pickupIndex={pickupIndex}
             activeRouteType={activeRouteType}
             routeMode={routeMode}
-          />
-
-          <Dashboard
-            phase={phase}
-            selectedAmbulance={selectedAmbulance}
-            selectedHospital={selectedHospital}
-            eta={eta}
-            distance={distance}
-            routeProgress={routeProgress}
-            trafficConditions={trafficConditions}
-            emergencyMode={emergencyMode}
-            rerouteCount={rerouteCount}
+            incidents={incidents}
+            corridorActive={corridorActive}
+            corridorIntersections={corridorIntersections}
           />
 
           <div className="absolute top-4 right-2 z-[1000] w-64 md:w-72">
             <AlertSystem alerts={alerts} onRemove={removeAlert} />
           </div>
+
+          {/* Floating toggle for Simulation Controls removed as it's now in left panel */}
 
           {/* Mobile dispatch button floating on map */}
           {phase === 'located' && selectedAmbulance && selectedHospital && (
@@ -784,23 +1227,78 @@ export default function App() {
             </button>
           )}
         </div>
-      </div>
+          
+        </div>
+        
+        {/* ── Right Sidebar: AI Intelligence ────────────────────── */}
+        <div className="hidden lg:flex shrink-0 flex-col overflow-hidden bg-brand-surface border-l border-brand-border z-[200]" style={{ width: '22%' }}>
+            <div className="p-3 border-b border-brand-border bg-brand-card">
+              <div className="font-display text-[11px] text-brand-cyan tracking-widest uppercase flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-brand-cyan rounded-full animate-pulse"></span>
+                AI Route Intelligence
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+              {presentationMode && (
+                <DemoOverlay 
+                  demoActive={demoActive}
+                  demoMode={demoMode}
+                  setDemoMode={setDemoMode}
+                  demoPhaseName={demoPhase}
+                  demoNextPhaseName={demoNextPhase}
+                  demoProgress={demoProgress}
+                  onStartDemo={handleStartDemo}
+                  onPauseDemo={handlePauseDemo}
+                  onResetDemo={handleResetDemo}
+                  onNextDemoStep={handleNextDemoStep}
+                  onPrevDemoStep={handlePrevDemoStep}
+                  
+                  emergencyType={emergencyType}
+                  scoredRoutes={scoredRoutes}
+                  trafficPrediction={trafficPrediction}
+                  incidents={incidents}
+                  rerouteStatus={rerouteStatus}
+                  globalTrafficState={globalTrafficState}
+                  dispatchTimeline={dispatchTimeline}
+                />
+              )}
+              
+              <RightAIPanel 
+                routeMode={routeMode} 
+                setRouteMode={setRouteMode} 
+                phase={phase} 
+                scoredRoutes={scoredRoutes}
+                trafficPrediction={trafficPrediction}
+                rerouteStatus={rerouteStatus}
+                globalTrafficState={globalTrafficState}
+                routeMetrics={routeMetrics}
+              />
+              
+              <HospitalPanel rankedHospitals={rankedHospitals} selectedHospital={selectedHospital} onSelect={setSelectedHospital} phase={phase} loading={hospitalLoading} emergencyType={emergencyType} />
+            </div>
+        </div>
+        
+      </div> {/* End of Top 3-Column Area */}
 
-      <ControlPanel
-        trafficEnabled={trafficEnabled}
-        onTrafficToggle={setTrafficEnabled}
-        emergencyMode={emergencyMode}
-        onEmergencyModeToggle={handleEmergencyModeToggle}
-        simulationSpeed={simulationSpeed}
-        onSimulationSpeedChange={setSimulationSpeed}
-        onSimulateTraffic={handleSimulateTraffic}
-        onDispatch={handleDispatch}
-        onReset={handleReset}
-        phase={phase}
-        selectedAmbulance={selectedAmbulance}
-        selectedHospital={selectedHospital}
-      />
+      {/* ── Operational Analytics ────────────────────────────────── */}
+      <div className="shrink-0 bg-brand-surface border-t border-brand-border z-[200] flex">
+        <div className="w-[22%] shrink-0 border-r border-brand-border overflow-y-auto p-3 hidden xl:block">
+          <DispatchTimeline steps={dispatchTimeline} phase={phase} />
+        </div>
+        <div className="flex-1 transition-all duration-300">
+            <AnalyticsPanel 
+              activeEmergencies={phase !== 'idle' ? 1 : 0}
+              activeIncidents={incidents.length}
+              ambulances={ambulances}
+              scoredRoutes={scoredRoutes}
+              rerouteCount={rerouteCount}
+              corridorIntersections={corridorIntersections}
+              globalTrafficState={globalTrafficState}
+              trafficPrediction={trafficPrediction}
+            />
+        </div>
+      </div>
     </div>
+  </div>
   );
 }
-

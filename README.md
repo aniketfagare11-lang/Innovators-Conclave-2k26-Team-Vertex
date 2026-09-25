@@ -8,7 +8,7 @@
 
 ## 🌟 Overview
 
-**LifeLine AI** is a state-of-the-art emergency dispatch and hospital recommendation platform. It transforms traditional static dispatching into a dynamic, data-driven emergency management network. By proxying real-time OpenStreetMap (OSM) data via high-availability Overpass mirrors, calculating road-snapped routes with OSRM, and tracking 5 dispatch milestones, LifeLine AI ensures emergency units reach patients and deliver them to optimal medical facilities in minimal time.
+**LifeLine AI** is a software-only prototype of a state-of-the-art emergency dispatch and hospital recommendation platform. It demonstrates how a dynamic, data-driven emergency management network could function. By proxying OpenStreetMap (OSM) data, calculating road-snapped routes with simulated traffic conditions, and tracking 5 dispatch milestones, LifeLine AI simulates a command center environment where emergency units navigate to optimal medical facilities. Note: This project operates purely as a simulation and does not control physical IoT signals or perform real-world dispatches.
 
 ---
 
@@ -145,7 +145,7 @@ PORT=3001
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/sharathkudachi/Lifeline-AI.git
+git clone https://github.com/aniketfagare11-lang/Innovators-Conclave-2k26-Team-Vertex.git
 cd Lifeline-AI
 ```
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import { SimulationContext } from '../context/SimulationContext';
 
@@ -31,7 +31,18 @@ const icons = {
   ambulanceSelected:  (name) => divIcon(`<div class="ambulance-marker selected"  style="position:relative">🚑${label(name, '#00d4ff')}</div>`, [36, 36]),
   ambulanceAvailable: (name) => divIcon(`<div class="ambulance-marker available" style="position:relative">🚑${label(name, '#00ff88')}</div>`),
   ambulanceBusy:      (name) => divIcon(`<div class="ambulance-marker busy"      style="position:relative">🚑${label(name, '#ffa500')}</div>`),
-  movingAmbulance: divIcon(`<div class="moving-ambulance">🚑</div>`, [38, 38]),
+  movingAmbulance: (name) => divIcon(`
+    <div class="moving-ambulance" style="position:relative;">
+      <div style="font-size:24px;filter:drop-shadow(0 0 8px rgba(0,212,255,0.8));">🚑</div>
+      <div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-size:10px;white-space:nowrap;color:#fff;font-family:monospace;background:rgba(0,10,20,0.85);padding:2px 6px;border:1px solid rgba(0,212,255,0.5);border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.8);text-align:center;line-height:1.2;z-index:9999;">
+        <div style="font-weight:bold;color:#00d4ff;">${name || 'AMBULANCE'}</div>
+        <div style="font-size:9px;color:#00ff88;">Status: EN ROUTE</div>
+      </div>
+    </div>
+  `, [38, 38]),
+  incidentAccident: divIcon(`<div class="incident-marker" style="font-size:24px;filter:drop-shadow(0 0 4px #ff3333);line-height:1">💥</div>`, [24, 24]),
+  incidentRoadBlock: divIcon(`<div class="incident-marker" style="font-size:24px;filter:drop-shadow(0 0 4px #ffd600);line-height:1">🚧</div>`, [24, 24]),
+  incidentDefault: divIcon(`<div class="incident-marker" style="font-size:24px;filter:drop-shadow(0 0 4px #ff9800);line-height:1">⚠️</div>`, [24, 24]),
 };
 
 // Build hospital icon based on rank and whether name should be shown
@@ -72,6 +83,9 @@ export default function MapView({
   onSelectAlternate,
   activeRouteType,
   routeMode,
+  incidents = [],
+  corridorActive = false,
+  corridorIntersections = [],
 }) {
   const mapRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -237,32 +251,32 @@ export default function MapView({
           )
         )}
 
-        {/* ── NORMAL route — blue ──────────────────────────────────── */}
+        {/* ── NORMAL route — white (BACKUP) ──────────────────────────────────── */}
         {shortestRoute && shortestRoute.length > 1 && (
           <>
-            <Polyline positions={shortestRoute} pathOptions={{ color: '#00d4ff', weight: 10, opacity: routeMode === 'normal' ? 0.15 : 0.05 }} />
+            <Polyline positions={shortestRoute} pathOptions={{ color: '#ffffff', weight: 10, opacity: routeMode === 'normal' ? 0.25 : 0.05 }} />
             <Polyline
               positions={shortestRoute}
               pathOptions={{
-                color: '#00d4ff',
-                weight: routeMode === 'normal' ? 5 : 2,
-                opacity: routeMode === 'normal' ? 0.95 : 0.25,
+                color: '#ffffff',
+                weight: routeMode === 'normal' ? 6 : 3,
+                opacity: routeMode === 'normal' ? 0.95 : 0.35,
                 dashArray: routeMode === 'normal' ? undefined : '8 6',
               }}
             />
           </>
         )}
 
-        {/* ── OPTIMAL route — green ─────────────────────────────────── */}
+        {/* ── OPTIMAL route — green (RECOMMENDED) ─────────────────────────────────── */}
         {optimalRoute && optimalRoute.length > 1 && (
           <>
-            <Polyline positions={optimalRoute} pathOptions={{ color: '#00ff88', weight: 10, opacity: routeMode === 'optimal' ? 0.15 : 0.05 }} />
+            <Polyline positions={optimalRoute} pathOptions={{ color: '#00ff88', weight: 10, opacity: routeMode === 'optimal' ? 0.25 : 0.05 }} />
             <Polyline
               positions={optimalRoute}
               pathOptions={{
                 color: '#00ff88',
-                weight: routeMode === 'optimal' ? 5 : 2,
-                opacity: routeMode === 'optimal' ? 0.95 : 0.25,
+                weight: routeMode === 'optimal' ? 6 : 3,
+                opacity: routeMode === 'optimal' ? 0.95 : 0.35,
                 dashArray: routeMode === 'optimal' ? undefined : '8 6',
               }}
             />
@@ -272,16 +286,16 @@ export default function MapView({
           </>
         )}
 
-        {/* ── ALTERNATIVE route — purple ────────────────────────────── */}
+        {/* ── ALTERNATIVE route — yellow (ALTERNATIVE) ────────────────────────────── */}
         {alternativeRoute && alternativeRoute.length > 1 && (
           <>
-            <Polyline positions={alternativeRoute} pathOptions={{ color: '#c084fc', weight: 10, opacity: routeMode === 'alternative' ? 0.15 : 0.05 }} />
+            <Polyline positions={alternativeRoute} pathOptions={{ color: '#ffd600', weight: 10, opacity: routeMode === 'alternative' ? 0.25 : 0.05 }} />
             <Polyline
               positions={alternativeRoute}
               pathOptions={{
-                color: '#c084fc',
-                weight: routeMode === 'alternative' ? 5 : 2,
-                opacity: routeMode === 'alternative' ? 0.95 : 0.25,
+                color: '#ffd600',
+                weight: routeMode === 'alternative' ? 6 : 3,
+                opacity: routeMode === 'alternative' ? 0.95 : 0.35,
                 dashArray: routeMode === 'alternative' ? undefined : '8 6',
               }}
             />
@@ -376,7 +390,7 @@ export default function MapView({
 
         {/* ── Moving ambulance ───────────────────────────────────── */}
         {ambulancePosition && (phase === 'enroute' || phase === 'arrived') && (
-          <Marker position={ambulancePosition} icon={icons.movingAmbulance} zIndexOffset={2000}>
+          <Marker position={ambulancePosition} icon={icons.movingAmbulance(selectedAmbulance?.name)} zIndexOffset={2000}>
             <Popup>
               <div style={{ fontFamily: 'var(--font-body)' }}>
                 <div style={{ fontWeight: 700, color: '#00d4ff' }}>🚑 {selectedAmbulance?.name}</div>
@@ -385,6 +399,70 @@ export default function MapView({
             </Popup>
           </Marker>
         )}
+
+        {/* ── Incident markers ───────────────────────────────────── */}
+        {incidents.map(inc => {
+          let icon = icons.incidentDefault;
+          if (inc.type === 'ACCIDENT') icon = icons.incidentAccident;
+          else if (inc.type === 'ROAD_BLOCK') icon = icons.incidentRoadBlock;
+
+          return (
+            <Marker key={`inc-${inc.id}`} position={[inc.latitude, inc.longitude]} icon={icon} zIndexOffset={1500}>
+              <Popup>
+                <div style={{ fontFamily: 'var(--font-body)' }}>
+                  <div style={{ fontWeight: 700, color: inc.severity === 'HIGH' || inc.severity === 'CRITICAL' ? '#ff3333' : '#ffd600' }}>
+                    {inc.title}
+                  </div>
+                  <div style={{ fontSize: 11, marginTop: 4, color: '#aaa' }}>Severity: {inc.severity}</div>
+                  <div style={{ fontSize: 11, color: '#aaa' }}>Est. Delay: +{inc.estimatedDelay}m</div>
+                  <div style={{ fontSize: 9, marginTop: 4, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {inc.source}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {/* ── Emergency Corridor ───────────────────────────────────── */}
+        {corridorActive && corridorIntersections.map(int => {
+          let color = '#ffd600';
+          let radius = 6;
+          let label = 'PREPARING';
+          if (int.status === 'PRIORITY') {
+             color = '#00ff88';
+             radius = 9;
+             label = 'PRIORITY ACTIVE';
+          } else if (int.status === 'CLEARED') {
+             color = '#4a7090';
+             radius = 4;
+             label = 'CLEARED';
+          }
+          
+          return (
+            <CircleMarker 
+              key={`corr-${int.id}`}
+              center={[int.latitude, int.longitude]}
+              radius={radius}
+              pathOptions={{
+                color: color,
+                fillColor: color,
+                fillOpacity: int.status === 'PRIORITY' ? 0.9 : 0.4,
+                weight: int.status === 'PRIORITY' ? 3 : 1
+              }}
+            >
+               <Popup>
+                <div style={{ fontFamily: 'var(--font-body)' }}>
+                  <div style={{ fontWeight: 700, color: color }}>🚦 {int.id}</div>
+                  <div style={{ fontSize: 11, marginTop: 4, color: '#aaa' }}>Status: {label}</div>
+                  <div style={{ fontSize: 9, marginTop: 4, color: '#00d4ff', textTransform: 'uppercase' }}>
+                    {int.simulated ? 'SIMULATED SIGNAL PRIORITY' : ''}
+                  </div>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       </MapContainer>
 
       {/* Click hint */}
@@ -405,9 +483,9 @@ export default function MapView({
         }}>
           <div style={{ color: '#4a7090', fontSize: 8, letterSpacing: '0.08em', marginBottom: 2 }}>ROUTES</div>
           {[
-            { color: '#00ff88', label: '🧠 Optimal', id: 'optimal' },
-            { color: '#00d4ff', label: '🛣️ Normal',  id: 'normal' },
-            { color: '#c084fc', label: '🔀 Alternative', id: 'alternative' },
+            { color: '#00ff88', label: '🟢 RECOMMENDED', id: 'optimal' },
+            { color: '#ffd600', label: '🟡 ALTERNATIVE', id: 'alternative' },
+            { color: '#ffffff', label: '⚪ BACKUP', id: 'normal' },
           ].map(({ color, label, id }) => (
             <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 28, height: 3, background: color, borderRadius: 2, opacity: routeMode === id ? 1 : 0.35 }} />
@@ -425,6 +503,24 @@ export default function MapView({
                   <span style={{ color: '#8ea8c0' }}>{lbl}</span>
                 </div>
               ))}
+            </>
+          )}
+          {incidents && incidents.length > 0 && (
+            <>
+              <div style={{ color: '#4a7090', fontSize: 8, letterSpacing: '0.08em', marginTop: 4, marginBottom: 2 }}>INCIDENTS</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8ea8c0' }}>
+                <span>💥 Accident</span>
+                <span style={{ marginLeft: 4 }}>🚧 Road Block</span>
+              </div>
+            </>
+          )}
+          {corridorActive && (
+            <>
+              <div style={{ color: '#00ff88', fontSize: 8, letterSpacing: '0.08em', marginTop: 4, marginBottom: 2 }}>CORRIDOR</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8ea8c0', fontSize: 9 }}>
+                <span><span style={{ color: '#00ff88' }}>●</span> Priority</span>
+                <span><span style={{ color: '#ffd600' }}>●</span> Prep</span>
+              </div>
             </>
           )}
         </div>
