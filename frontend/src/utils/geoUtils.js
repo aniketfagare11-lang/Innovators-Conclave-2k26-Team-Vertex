@@ -381,7 +381,7 @@ function generateFallbackHospitals(lat, lng) {
  */
 export async function fetchHospitalsFromBackend(lat, lng) {
   try {
-    const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://innovators-conclave-2k26-team-verte.vercel.app';
     const backendUrl = `${API_BASE}/api/hospitals/nearby?lat=${lat}&lng=${lng}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
