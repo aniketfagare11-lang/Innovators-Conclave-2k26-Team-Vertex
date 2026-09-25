@@ -33,12 +33,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`\n🚑 LifeLine AI Backend running on http://localhost:${PORT}`);
-  console.log(`📡 API Endpoints:`);
-  console.log(`   GET  /api/ambulances?lat=&lng=`);
-  console.log(`   GET  /api/hospitals`);
-  console.log(`   POST /api/calculate-route`);
-  console.log(`   POST /api/ai-decision\n`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`\n🚑 LifeLine AI Backend running on http://localhost:${PORT}`);
+    console.log(`📡 API Endpoints:`);
+    console.log(`   GET  /api/ambulances?lat=&lng=`);
+    console.log(`   GET  /api/hospitals`);
+    console.log(`   POST /api/calculate-route`);
+    console.log(`   POST /api/ai-decision\n`);
+  });
+}
+
+module.exports = app;
