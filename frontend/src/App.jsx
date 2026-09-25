@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MapView from './components/MapView';
 import Header from './components/Header';
 import EmergencyInput from './components/EmergencyInput';
@@ -54,24 +54,24 @@ import {
   updateCorridorStatus
 } from './utils/emergencyCorridor';
 
-// ─── App ───────────────────────────────────────────────────────────
+// â”€â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function App() {
-  // ── Core state ──────────────────────────────────────────────────
+  // â”€â”€ Core state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [phase, setPhase]                           = useState('idle');
   const [emergencyLocation, setEmergencyLocation]   = useState(null);
   const [emergencyType, setEmergencyType]           = useState('Accident');
 
-  // ── Ambulances ───────────────────────────────────────────────────
+  // â”€â”€ Ambulances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [ambulances, setAmbulances]                 = useState([]);
   const [selectedAmbulance, setSelectedAmbulance]   = useState(null);
 
-  // ── Hospitals ────────────────────────────────────────────────────
+  // â”€â”€ Hospitals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [localHospitals, setLocalHospitals]         = useState([]);
   const [hospitalLoading, setHospitalLoading]        = useState(false);
   const [rankedHospitals, setRankedHospitals]       = useState([]);
   const [selectedHospital, setSelectedHospital]     = useState(null);
 
-  // ── Route & animation ────────────────────────────────────────────
+  // â”€â”€ Route & animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // shortestRoute = blue (normal/fewest km), optimalRoute = green (traffic-avoiding), alternativeRoute = purple
   const [shortestRoute, setShortestRoute]           = useState([]);
   const [optimalRoute, setOptimalRoute]             = useState([]);
@@ -85,67 +85,67 @@ export default function App() {
   const [pickupIndex, setPickupIndex]               = useState(0);
   const [trafficSegments, setTrafficSegments]       = useState([]);
 
-  // ── Traffic & mode ───────────────────────────────────────────────
+  // â”€â”€ Traffic & mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [trafficEnabled, setTrafficEnabled]         = useState(true);
   const [emergencyMode, setEmergencyMode]           = useState(false);
   const [globalTrafficState, setGlobalTrafficState] = useState(createTrafficState(0.0));
   const [trafficConditions, setTrafficConditions]   = useState({});
   const [routeTrafficInfo, setRouteTrafficInfo]     = useState(null);
   
-  // ── Incidents ────────────────────────────────────────────────────
+  // â”€â”€ Incidents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [incidents, setIncidents]                   = useState([]);
   const [incidentImpactInfo, setIncidentImpactInfo] = useState(null);
 
-  // ── AI Prediction ────────────────────────────────────────────────
+  // â”€â”€ AI Prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [trafficHistory, setTrafficHistory]         = useState([createTrafficState(0.0)]);
   const [trafficPrediction, setTrafficPrediction]   = useState(null);
   
-  // ── AI Route Scoring ─────────────────────────────────────────────
+  // â”€â”€ AI Route Scoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [scoredRoutes, setScoredRoutes]             = useState([]);
 
-  // ── Emergency Corridor ───────────────────────────────────────────
+  // â”€â”€ Emergency Corridor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [corridorActive, setCorridorActive]         = useState(false);
   const [corridorIntersections, setCorridorIntersections] = useState([]);
 
   const [simulationSpeed, setSimulationSpeed]       = useState(60);
 
-  // ── Stats ─────────────────────────────────────────────────────────
+  // â”€â”€ Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [eta, setEta]                               = useState(null);
   const [distance, setDistance]                     = useState(null);
   const [normalTime, setNormalTime]                 = useState(null);
   const [optimizedTime, setOptimizedTime]           = useState(null);
 
-  // ── Alerts ───────────────────────────────────────────────────────
+  // â”€â”€ Alerts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [alerts, setAlerts]                         = useState([]);
 
-  // ── Clock ────────────────────────────────────────────────────────
+  // â”€â”€ Clock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [currentTime, setCurrentTime]               = useState('');
 
-  // ── Route mode (‘optimal’ = auto-rerouting, ‘normal’ = direct) ───────
+  // â”€â”€ Route mode (â€˜optimalâ€™ = auto-rerouting, â€˜normalâ€™ = direct) â”€â”€â”€â”€â”€â”€â”€
   const [routeMode, setRouteMode]                   = useState('optimal');
 
-  // ── Rerouting state ─────────────────────────────────────
+  // â”€â”€ Rerouting state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [rerouteCount, setRerouteCount]             = useState(0);
   const [lastRerouteTime, setLastRerouteTime]       = useState(0);
-  const [rerouteStatus, setRerouteStatus]           = useState('STABLE ✓');
+  const [rerouteStatus, setRerouteStatus]           = useState('STABLE âœ“');
 
-  // ── Presentation Mode ───────────────────────────────────────────
+  // â”€â”€ Presentation Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [presentationMode, setPresentationMode]     = useState(true);
   const [simControlsOpen, setSimControlsOpen]       = useState(false);
   const [analyticsExpanded, setAnalyticsExpanded]   = useState(false);
 
 
-  // ── Dispatch Timeline ─────────────────────────────────────────────
+  // â”€â”€ Dispatch Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TIMELINE_STEPS = [
-    { key: 'created',   icon: '🚨', label: 'Emergency Created' },
-    { key: 'assigned',  icon: '🚑', label: 'Ambulance Assigned' },
-    { key: 'enroute',   icon: '📍', label: 'Ambulance En Route' },
-    { key: 'pickup',    icon: '👤', label: 'Patient Picked Up' },
-    { key: 'arrived',   icon: '🏥', label: 'Reached Hospital' },
+    { key: 'created',   icon: 'ðŸš¨', label: 'Emergency Created' },
+    { key: 'assigned',  icon: 'ðŸš‘', label: 'Ambulance Assigned' },
+    { key: 'enroute',   icon: 'ðŸ“', label: 'Ambulance En Route' },
+    { key: 'pickup',    icon: 'ðŸ‘¤', label: 'Patient Picked Up' },
+    { key: 'arrived',   icon: 'ðŸ¥', label: 'Reached Hospital' },
   ];
   const [dispatchTimeline, setDispatchTimeline]      = useState([]);
 
-  // ── Refs ──────────────────────────────────────────────────────────
+  // â”€â”€ Refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const animRef            = useRef(null);
   const routeRef           = useRef([]);
   const idxRef             = useRef(0);
@@ -156,7 +156,7 @@ export default function App() {
   const pickupIndexRef     = useRef(0);
   const corridorActiveRef  = useRef(false);
 
-  // ── DEMO MODE ─────────────────────────────────────────────
+  // â”€â”€ DEMO MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [demoActive, setDemoActive] = useState(false);
   const [demoMode, setDemoMode] = useState('JUDGE'); // 'JUDGE' | 'LIVE'
   const [demoPhase, setDemoPhase] = useState('IDLE');
@@ -164,7 +164,7 @@ export default function App() {
   const [demoNextPhase, setDemoNextPhase] = useState('EMERGENCY_CREATED');
   const [demoProgress, setDemoProgress] = useState(0);
 
-  // ── Clock tick ───────────────────────────────────────────────────
+  // â”€â”€ Clock tick â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const tick = () => setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour12: false }));
     tick();
@@ -172,7 +172,7 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Alert helpers ─────────────────────────────────────────────────
+  // â”€â”€ Alert helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const addAlert = useCallback((message, type = 'info') => {
     const alert = { id: Date.now() + Math.random(), message, type, time: new Date().toLocaleTimeString('en-IN') };
     setAlerts(prev => [alert, ...prev].slice(0, 8));
@@ -182,7 +182,7 @@ export default function App() {
     setAlerts(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  // ── Rank helpers ──────────────────────────────────────────────────
+  // â”€â”€ Rank helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const rankAmbulances = useCallback((ambs, loc, traffic, eMode) => {
     return [...ambs].map(a => ({
       ...a,
@@ -199,7 +199,7 @@ export default function App() {
     }).sort((a, b) => b.score - a.score);
   }, []);
 
-  // ── Map click → set emergency ─────────────────────────────────────
+  // â”€â”€ Map click â†’ set emergency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleMapClick = useCallback(async (latlng) => {
     if (phase !== 'idle' && phase !== 'located') return;
     if (animRef.current) { clearInterval(animRef.current); animRef.current = null; }
@@ -212,17 +212,17 @@ export default function App() {
     setEta(null); setDistance(null);
     setNormalTime(null); setOptimizedTime(null);
 
-    // Initialize dispatch timeline — step 1: Emergency Created
+    // Initialize dispatch timeline â€” step 1: Emergency Created
     const now = new Date().toLocaleTimeString('en-IN');
     setDispatchTimeline([
-      { key: 'created', icon: '🚨', label: 'Emergency Created', time: now, done: true, active: false },
-      { key: 'assigned', icon: '🚑', label: 'Ambulance Assigned', time: null, done: false, active: false },
-      { key: 'enroute', icon: '📍', label: 'Ambulance En Route', time: null, done: false, active: false },
-      { key: 'pickup', icon: '👤', label: 'Patient Picked Up', time: null, done: false, active: false },
-      { key: 'arrived', icon: '🏥', label: 'Reached Hospital', time: null, done: false, active: false },
+      { key: 'created', icon: 'ðŸš¨', label: 'Emergency Created', time: now, done: true, active: false },
+      { key: 'assigned', icon: 'ðŸš‘', label: 'Ambulance Assigned', time: null, done: false, active: false },
+      { key: 'enroute', icon: 'ðŸ“', label: 'Ambulance En Route', time: null, done: false, active: false },
+      { key: 'pickup', icon: 'ðŸ‘¤', label: 'Patient Picked Up', time: null, done: false, active: false },
+      { key: 'arrived', icon: 'ðŸ¥', label: 'Reached Hospital', time: null, done: false, active: false },
     ]);
 
-    addAlert('🔍 Fetching nearby hospitals from OpenStreetMap...', 'info');
+    addAlert('ðŸ” Fetching nearby hospitals from OpenStreetMap...', 'info');
     setHospitalLoading(true);
 
     // Parallel fetch: hospitals (via backend) + real traffic
@@ -233,9 +233,9 @@ export default function App() {
 
     setHospitalLoading(false);
 
-    // No static fallback — if empty, show message and stay at located phase
+    // If no hospitals at all, bail gracefully
     if (!fetchedHospitals || fetchedHospitals.length === 0) {
-      addAlert('⚠️ No hospitals found in this area — try clicking a different location', 'warning');
+      addAlert('⚠️ Could not load hospitals — please try again', 'warning');
       setLocalHospitals([]);
       setRankedHospitals([]);
       setSelectedHospital(null);
@@ -244,10 +244,15 @@ export default function App() {
       return;
     }
 
+    // Notify if offline fallback data is used
+    if (fetchedHospitals[0]?.isFallback) {
+      addAlert('📡 Using offline hospital data (live OSM unavailable)', 'warning');
+    }
+
     setLocalHospitals(fetchedHospitals);
 
     // Road-snapped ambulances near found hospitals
-    addAlert('📍 Snapping ambulance positions to road network...', 'info');
+    addAlert('ðŸ“ Snapping ambulance positions to road network...', 'info');
     const newAmbs = await generateRoadAmbulances(loc.lat, loc.lng, 6, fetchedHospitals);
 
     // Traffic conditions (Normalized Intelligence Layer)
@@ -278,13 +283,13 @@ export default function App() {
     const preEta = scored[0].estimatedArrival + (rankedH[0].estimatedTime || 5);
     setEta(preEta);
 
-    addAlert('🆘 Emergency location set! AI analyzing situation...', 'danger');
-    setTimeout(() => addAlert(`🚑 AI selected: ${scored[0].name} (Score: ${scored[0].score.toFixed(0)})`, 'success'), 700);
-    setTimeout(() => addAlert(`🏥 Recommended: ${rankedH[0].name} — ${rankedH[0].type}`, 'info'), 1400);
+    addAlert('ðŸ†˜ Emergency location set! AI analyzing situation...', 'danger');
+    setTimeout(() => addAlert(`ðŸš‘ AI selected: ${scored[0].name} (Score: ${scored[0].score.toFixed(0)})`, 'success'), 700);
+    setTimeout(() => addAlert(`ðŸ¥ Recommended: ${rankedH[0].name} â€” ${rankedH[0].type}`, 'info'), 1400);
   }, [phase, emergencyMode, emergencyType, rankAmbulances, rankHospitals, addAlert]);
 
 
-  // ── Core dispatch engine ──────────────────────────────────────────
+  // â”€â”€ Core dispatch engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const executeDispatch = useCallback(async (loc, amb, hosp, traffic, mode, eType, startIdx = 0, currentRouteMode) => {
     if (!loc || !amb || !hosp) return;
 
@@ -295,12 +300,12 @@ export default function App() {
     const through = [loc.lat, loc.lng];
     const to      = [hosp.lat, hosp.lng];
 
-    addAlert('📡 Calculating road routes...', 'info');
+    addAlert('ðŸ“¡ Calculating road routes...', 'info');
 
     // Fetch all three routes simultaneously
     const { shortest, optimal, alternative, metrics } = await generateDualRoutes(from, through, to);
 
-    // Validate routes — reject if they look like straight lines (too few points)
+    // Validate routes â€” reject if they look like straight lines (too few points)
     const validShortest     = shortest     && shortest.length     > 10 ? shortest     : null;
     const validOptimal      = optimal      && optimal.length      > 10 ? optimal      : null;
     const validAlternative  = alternative  && alternative.length  > 10 ? alternative  : null;
@@ -310,7 +315,7 @@ export default function App() {
     let finalOptimal     = validOptimal;
     let finalAlternative = validAlternative;
     if (!finalShortest || !finalOptimal) {
-      addAlert('⚠️ Route API slow — retrying...', 'warning');
+      addAlert('âš ï¸ Route API slow â€” retrying...', 'warning');
       const retry = await generateDualRoutes(from, through, to);
       finalShortest    = finalShortest    || (retry.shortest?.length     > 10 ? retry.shortest     : null);
       finalOptimal     = finalOptimal     || (retry.optimal?.length      > 10 ? retry.optimal      : null);
@@ -384,17 +389,17 @@ export default function App() {
     etaBaseRef.current = optMin;
 
     if (startIdx === 0) {
-      addAlert(`🚑 ${amb.name} dispatched — ${activeMode.toUpperCase()} route active!`, 'success');
-      addAlert(`🛣️ ${activeMode === 'normal' ? 'Direct route — no rerouting' : activeMode === 'alternative' ? 'Alternative path active' : 'Optimal route — auto-rerouting enabled'}`, 'info');
-      if (mode) addAlert('🚨 Signal override ACTIVE — all lights cleared', 'danger');
-      addAlert(`📍 En route to ${hosp.name}`, 'info');
+      addAlert(`ðŸš‘ ${amb.name} dispatched â€” ${activeMode.toUpperCase()} route active!`, 'success');
+      addAlert(`ðŸ›£ï¸ ${activeMode === 'normal' ? 'Direct route â€” no rerouting' : activeMode === 'alternative' ? 'Alternative path active' : 'Optimal route â€” auto-rerouting enabled'}`, 'info');
+      if (mode) addAlert('ðŸš¨ Signal override ACTIVE â€” all lights cleared', 'danger');
+      addAlert(`ðŸ“ En route to ${hosp.name}`, 'info');
       // Timeline step 3: Ambulance En Route
       const enrouteTime = new Date().toLocaleTimeString('en-IN');
       setDispatchTimeline(prev => prev.map(s =>
         s.key === 'enroute' ? { ...s, done: true, active: true, time: enrouteTime } : s
       ));
     } else {
-      addAlert('🔄 Traffic rerouted — ambulance on new road path', 'success');
+      addAlert('ðŸ”„ Traffic rerouted â€” ambulance on new road path', 'success');
     }
 
     const realDurMs  = optMin * 60 * 1000;
@@ -432,8 +437,8 @@ export default function App() {
           s.key === 'arrived' ? { ...s, done: true, active: false, time: arrivedTime }
           : s.key === 'enroute' ? { ...s, active: false } : s
         ));
-        addAlert(`✅ Ambulance arrived at ${hosp.name}!`, 'success');
-        addAlert('📋 Patient handover complete — case closed', 'info');
+        addAlert(`âœ… Ambulance arrived at ${hosp.name}!`, 'success');
+        addAlert('ðŸ“‹ Patient handover complete â€” case closed', 'info');
         return;
       }
 
@@ -445,22 +450,22 @@ export default function App() {
         setCorridorIntersections(prev => updateCorridorStatus(prev, currentRoute[idx]));
       }
 
-      if (idx === Math.floor(totalPts * 0.3) && !patientPickedUpRef.current)  addAlert('🚑 Approaching patient pickup point', 'info');
+      if (idx === Math.floor(totalPts * 0.3) && !patientPickedUpRef.current)  addAlert('ðŸš‘ Approaching patient pickup point', 'info');
       if (idx >= targetPickupIdx && !patientPickedUpRef.current) {
         patientPickedUpRef.current = true;
-        addAlert('👤 Patient on board — heading to hospital', 'success');
+        addAlert('ðŸ‘¤ Patient on board â€” heading to hospital', 'success');
         // Timeline step 4: Patient Picked Up
         const pickupTime = new Date().toLocaleTimeString('en-IN');
         setDispatchTimeline(prev => prev.map(s =>
           s.key === 'pickup' ? { ...s, done: true, active: false, time: pickupTime } : s
         ));
       }
-      if (idx === Math.floor(totalPts * 0.75) && patientPickedUpRef.current) addAlert('🏥 Approaching hospital — prepare ER team', 'warning');
+      if (idx === Math.floor(totalPts * 0.75) && patientPickedUpRef.current) addAlert('ðŸ¥ Approaching hospital â€” prepare ER team', 'warning');
     }, Math.max(40, (optMin * 60 * 1000 / simulationSpeed) / (activeRoute.length || 50)));
   }, [simulationSpeed, addAlert, routeMode]);
 
 
-  // ── Preview both routes when hospital/ambulance selected ─────────
+  // â”€â”€ Preview both routes when hospital/ambulance selected â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const previewRoutesRef = useRef(null);
   useEffect(() => {
     if (phase !== 'located' || !selectedAmbulance || !selectedHospital || !emergencyLocation) return;
@@ -489,13 +494,13 @@ export default function App() {
     return () => clearTimeout(previewRoutesRef.current);
   }, [phase, selectedAmbulance, selectedHospital, emergencyLocation, globalTrafficState, incidents, trafficPrediction]);
 
-  // ── Manual dispatch wrapper ────────────────────────────────────────
+  // â”€â”€ Manual dispatch wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleDispatch = useCallback(() => {
     setRerouteCount(0);
     executeDispatch(emergencyLocation, selectedAmbulance, selectedHospital, trafficConditions, emergencyMode, emergencyType, 0, routeMode);
   }, [emergencyLocation, selectedAmbulance, selectedHospital, trafficConditions, emergencyMode, emergencyType, executeDispatch, routeMode]);
 
-  // ── Seamless rerouting helper ───────────────────────────────────────
+  // â”€â”€ Seamless rerouting helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const performReroute = useCallback(async (conditions, force = false, triggerReason = '') => {
     if (phase !== 'enroute' || !selectedHospital) return;
 
@@ -512,7 +517,7 @@ export default function App() {
     const currentPos = currentRoute[currentIdx];
     if (!currentPos) return;
 
-    addAlert('⚠️ Evaluating route alternatives...', 'info');
+    addAlert('âš ï¸ Evaluating route alternatives...', 'info');
 
     const isPickedUp = patientPickedUpRef.current || currentIdx >= pickupIndexRef.current;
     let newRemainingPath = null;
@@ -538,11 +543,11 @@ export default function App() {
         setScoredRoutes(ranked); // Update UI
         
         const evalResult = evaluateReroute(ranked, activeRouteType);
-        setRerouteStatus(evalResult.status || 'STABLE ✓');
+        setRerouteStatus(evalResult.status || 'STABLE âœ“');
         
         if (!evalResult.shouldReroute && !force) {
           // No significant improvement, stay on current route
-          addAlert(`ℹ️ Reroute skipped: ${evalResult.reason}`, 'info');
+          addAlert(`â„¹ï¸ Reroute skipped: ${evalResult.reason}`, 'info');
           return;
         }
         
@@ -551,7 +556,7 @@ export default function App() {
         newRemainingPath = ranked.find(r => r.id === newActiveType)?.originalRoute;
         
         const reasonMsg = force ? `Forced: ${triggerReason}` : evalResult.reason;
-        addAlert(`🔄 REROUTING: ${reasonMsg}`, 'success');
+        addAlert(`ðŸ”„ REROUTING: ${reasonMsg}`, 'success');
         
         // Record in timeline
         setDispatchTimeline(prev => [...prev, formatRerouteTimelineEvent(activeRouteType, newActiveType, evalResult.improvement || 0)]);
@@ -559,7 +564,7 @@ export default function App() {
     }
 
     if (!Array.isArray(newRemainingPath) || newRemainingPath.length < 2) {
-       addAlert('⚠️ REROUTE FAILED: Continuing on current route.', 'warning');
+       addAlert('âš ï¸ REROUTE FAILED: Continuing on current route.', 'warning');
        return;
     }
 
@@ -573,7 +578,7 @@ export default function App() {
     const splicedRoute = [...traveledPath, ...newRemainingPath.slice(1)];
 
     routeRef.current = splicedRoute;
-    // idxRef.current remains at currentIdx — seamless continuation without teleporting!
+    // idxRef.current remains at currentIdx â€” seamless continuation without teleporting!
 
     setOptimalRoute(splicedRoute);
     setRoute(splicedRoute);
@@ -581,7 +586,7 @@ export default function App() {
     
     if (corridorActiveRef.current) {
       setCorridorIntersections(generateCorridorIntersections(splicedRoute, 0.4));
-      addAlert('🔄 Corridor regenerated for new road path', 'info');
+      addAlert('ðŸ”„ Corridor regenerated for new road path', 'info');
     }
     
     // Re-evaluate assessment on new route
@@ -594,10 +599,10 @@ export default function App() {
     const newOptMin = etaBaseRef.current * 0.85;
     etaBaseRef.current = newOptMin;
 
-    addAlert('✅ New road route calculated from current position — seamless reroute applied', 'success');
+    addAlert('âœ… New road route calculated from current position â€” seamless reroute applied', 'success');
   }, [phase, selectedHospital, emergencyLocation, trafficConditions, emergencyMode, addAlert]);
 
-  // ── Auto-rerouting engine — only runs in 'optimal' mode ─────────
+  // â”€â”€ Auto-rerouting engine â€” only runs in 'optimal' mode â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     // Skip rerouting entirely in Normal mode
     if (phase !== 'enroute' || routeMode !== 'optimal') {
@@ -618,7 +623,7 @@ export default function App() {
   }, [phase, routeMode, trafficConditions, rerouteCount, performReroute]);
 
 
-  // ── Real-time traffic refresh every 60s ──────────────────────────
+  // â”€â”€ Real-time traffic refresh every 60s â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (phase === 'idle') return;
     trafficTimerRef.current = setInterval(async () => {
@@ -652,13 +657,13 @@ export default function App() {
         });
 
         setTrafficSegments(richSegments);
-        addAlert('🔄 Real-time traffic data refreshed', 'info');
+        addAlert('ðŸ”„ Real-time traffic data refreshed', 'info');
       }
     }, 60000);
     return () => clearInterval(trafficTimerRef.current);
   }, [phase, emergencyLocation, ambulances, localHospitals, emergencyMode, route, addAlert]);
 
-  // ── Select alternate route ────────────────────────────────────────
+  // â”€â”€ Select alternate route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSelectAlternate = useCallback((altIdx) => {
     const alt = alternateRoutes[altIdx];
     if (!alt) return;
@@ -668,17 +673,17 @@ export default function App() {
     setTrafficSegments(generateTrafficSegments(newRoute, trafficConditions, emergencyMode));
     routeRef.current = newRoute;
     idxRef.current   = 0;
-    addAlert(`↪ Switched to alternate route ${altIdx + 1}`, 'success');
+    addAlert(`â†ª Switched to alternate route ${altIdx + 1}`, 'success');
   }, [alternateRoutes, trafficConditions, emergencyMode, addAlert]);
 
-  // ── SOS Automation (Backtick hotkey) ─────────────────────────────
+  // â”€â”€ SOS Automation (Backtick hotkey) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const triggerSOS = useCallback(async () => {
     if (phase !== 'idle' && phase !== 'located') {
-      addAlert('⚠️ Cannot trigger SOS while simulation is already active.', 'warning');
+      addAlert('âš ï¸ Cannot trigger SOS while simulation is already active.', 'warning');
       return;
     }
     if (!navigator.geolocation) {
-      addAlert('❌ Geolocation not supported by your browser', 'danger');
+      addAlert('âŒ Geolocation not supported by your browser', 'danger');
       return;
     }
 
@@ -691,16 +696,16 @@ export default function App() {
       const eMode = true;
 
       // Pre-fetch data while overlay is shown
-      addAlert('🚨 SOS INITIATED — retrieving location...', 'danger');
+      addAlert('ðŸš¨ SOS INITIATED â€” retrieving location...', 'danger');
 
       const [fetchedHospitals, realTraffic] = await Promise.all([
         fetchHospitalsFromBackend(loc.lat, loc.lng),
         fetchRealTimeTraffic(loc.lat, loc.lng),
       ]);
-      // No static fallback — SOS with no hospitals will show a warning
+      // No static fallback â€” SOS with no hospitals will show a warning
       const hospitals = fetchedHospitals?.length > 0 ? fetchedHospitals : [];
       if (hospitals.length === 0) {
-        addAlert('⚠️ SOS: No hospitals found nearby — location may be remote', 'warning');
+        addAlert('âš ï¸ SOS: No hospitals found nearby â€” location may be remote', 'warning');
       }
       const newAmbs   = await generateRoadAmbulances(loc.lat, loc.lng, 6, hospitals);
       const traffic   = generateTrafficConditions(newAmbs, hospitals, undefined, realTraffic);
@@ -711,7 +716,7 @@ export default function App() {
       sosPendingRef.current = { loc, eType, eMode, hospitals, newAmbs, traffic, scoredAmbs, scoredHosps };
       setSosVisible(true);
     }, (err) => {
-      addAlert('❌ Failed to get live location: ' + err.message, 'danger');
+      addAlert('âŒ Failed to get live location: ' + err.message, 'danger');
     });
   }, [phase, rankAmbulances, rankHospitals, addAlert]);
 
@@ -737,14 +742,14 @@ export default function App() {
     setRankedHospitals(scoredHosps.slice(0, 3));
     setSelectedHospital(scoredHosps[0]);
 
-    addAlert('🚨 SOS confirmed — dispatching emergency services!', 'danger');
+    addAlert('ðŸš¨ SOS confirmed â€” dispatching emergency services!', 'danger');
     executeDispatch(loc, scoredAmbs[0], scoredHosps[0], traffic, eMode, eType, 0, 'optimal');
   }, [executeDispatch, addAlert]);
 
   const handleSOSCancel = useCallback(() => {
     setSosVisible(false);
     sosPendingRef.current = null;
-    addAlert('✅ SOS cancelled — false alarm cleared', 'info');
+    addAlert('âœ… SOS cancelled â€” false alarm cleared', 'info');
   }, [addAlert]);
 
   // Global backtick key listener for SOS
@@ -757,10 +762,10 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [triggerSOS]);
 
-  // ── Emergency mode toggle ─────────────────────────────────────────
+  // â”€â”€ Emergency mode toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleEmergencyModeToggle = useCallback((val) => {
     setEmergencyMode(val);
-    addAlert(val ? '🚨 Emergency Priority Mode activated' : 'ℹ️ Emergency mode deactivated', val ? 'danger' : 'info');
+    addAlert(val ? 'ðŸš¨ Emergency Priority Mode activated' : 'â„¹ï¸ Emergency mode deactivated', val ? 'danger' : 'info');
     if (emergencyLocation && phase === 'located') {
       const newH = rankHospitals(localHospitals, emergencyLocation, emergencyType, trafficConditions, val);
       setRankedHospitals(newH.slice(0, 3));
@@ -769,7 +774,7 @@ export default function App() {
     }
   }, [emergencyLocation, phase, emergencyType, trafficConditions, ambulances, localHospitals, rankHospitals, rankAmbulances, addAlert]);
 
-  // ── Traffic spike ──────────────────────────────────────────────────
+  // â”€â”€ Traffic spike â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSimulateTraffic = useCallback(() => {
     const newState = triggerTrafficSpike(globalTrafficState);
     setGlobalTrafficState(newState);
@@ -783,7 +788,7 @@ export default function App() {
     const spiked = adaptStateToLegacyConditions(newState, ambulances, localHospitals);
     setTrafficConditions(spiked);
     
-    addAlert(`⚡ Traffic surge detected! Status: ${newState.severity}`, 'warning');
+    addAlert(`âš¡ Traffic surge detected! Status: ${newState.severity}`, 'warning');
     
     if (phase === 'enroute' && route.length > 0) {
       setTrafficSegments(generateTrafficSegments(routeRef.current, spiked, emergencyMode));
@@ -796,14 +801,14 @@ export default function App() {
       const newH = rankHospitals(localHospitals, emergencyLocation, emergencyType, spiked, emergencyMode);
       setRankedHospitals(newH.slice(0, 3));
       setSelectedHospital(newH[0]);
-      addAlert('🔄 Hospital ranking updated due to traffic changes', 'info');
+      addAlert('ðŸ”„ Hospital ranking updated due to traffic changes', 'info');
     }
   }, [globalTrafficState, ambulances, localHospitals, phase, route, emergencyMode, emergencyLocation, emergencyType, rankHospitals, addAlert, performReroute, incidentImpactInfo]);
 
-  // ── Incident Management ────────────────────────────────────────────
+  // â”€â”€ Incident Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSimulateIncident = useCallback((type) => {
     if (phase !== 'enroute' || !routeRef.current || routeRef.current.length < 5) {
-      addAlert('⚠️ Dispatch ambulance first to simulate route incidents.', 'warning');
+      addAlert('âš ï¸ Dispatch ambulance first to simulate route incidents.', 'warning');
       return;
     }
     
@@ -827,11 +832,11 @@ export default function App() {
       setTrafficPrediction(predictFutureTraffic(trafficHistory, updated, 15));
       
       if (corridorActiveRef.current && impact && impact.affected) {
-        addAlert(`⚠ INCIDENT AFFECTED: Virtual corridor disrupted by ${newInc.title}`, 'danger');
+        addAlert(`âš  INCIDENT AFFECTED: Virtual corridor disrupted by ${newInc.title}`, 'danger');
       }
       
       if (impact && impact.affected) {
-        addAlert(`💥 ${newInc.title} reported on active route!`, 'danger');
+        addAlert(`ðŸ’¥ ${newInc.title} reported on active route!`, 'danger');
         setRouteTrafficInfo(prevInfo => {
            const base = getRouteTraffic(routeRef.current, globalTrafficState);
            return applyIncidentImpact(base, impact);
@@ -842,7 +847,7 @@ export default function App() {
            setTimeout(() => performReroute(trafficConditions, true, `${impact.severity} incident detected`), 1000);
         }
       } else {
-        addAlert(`⚠️ ${newInc.title} reported nearby.`, 'warning');
+        addAlert(`âš ï¸ ${newInc.title} reported nearby.`, 'warning');
       }
       return updated;
     });
@@ -852,7 +857,7 @@ export default function App() {
     setIncidents([]);
     setIncidentImpactInfo(null);
     setTrafficPrediction(predictFutureTraffic(trafficHistory, [], 15));
-    addAlert('✅ All incidents cleared.', 'success');
+    addAlert('âœ… All incidents cleared.', 'success');
     if (phase === 'enroute') {
       const base = getRouteTraffic(routeRef.current, globalTrafficState);
       setRouteTrafficInfo(base);
@@ -866,17 +871,17 @@ export default function App() {
     setCorridorIntersections(generateCorridorIntersections(routeRef.current, 0.4));
     
     const t = new Date().toLocaleTimeString('en-IN');
-    addAlert(`🟢 SIMULATED EMERGENCY CORRIDOR ACTIVATED at ${t}`, 'success');
+    addAlert(`ðŸŸ¢ SIMULATED EMERGENCY CORRIDOR ACTIVATED at ${t}`, 'success');
   }, [addAlert]);
 
   const handleDeactivateCorridor = useCallback(() => {
     corridorActiveRef.current = false;
     setCorridorActive(false);
     setCorridorIntersections([]);
-    addAlert('🔴 Emergency corridor deactivated', 'info');
+    addAlert('ðŸ”´ Emergency corridor deactivated', 'info');
   }, [addAlert]);
 
-  // ── Reset ──────────────────────────────────────────────────────────
+  // â”€â”€ Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleReset = useCallback(() => {
     if (animRef.current)         { clearInterval(animRef.current);         animRef.current = null; }
     if (rerouteTimerRef.current) { clearInterval(rerouteTimerRef.current); rerouteTimerRef.current = null; }
@@ -897,7 +902,7 @@ export default function App() {
     setTrafficHistory([createTrafficState(0.0)]); setTrafficPrediction(null);
     setScoredRoutes([]);
     corridorActiveRef.current = false; setCorridorActive(false); setCorridorIntersections([]);
-    addAlert('🔄 System reset — ready for new emergency', 'info');
+    addAlert('ðŸ”„ System reset â€” ready for new emergency', 'info');
   }, [addAlert]);
 
   const DEMO_STEPS = [
@@ -1032,35 +1037,35 @@ export default function App() {
     }
   }, [demoActive, demoMode, demoPhase, handleNextDemoStep]);
 
-  // ── Emergency type change ─────────────────────────────────────────
+  // â”€â”€ Emergency type change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleEmergencyTypeChange = useCallback((type) => {
     setEmergencyType(type);
     if (emergencyLocation && phase === 'located') {
       const newH = rankHospitals(localHospitals, emergencyLocation, type, trafficConditions, emergencyMode);
       setRankedHospitals(newH.slice(0, 3));
       setSelectedHospital(newH[0]);
-      addAlert(`🔄 Emergency type changed to ${type} — hospitals re-ranked`, 'info');
+      addAlert(`ðŸ”„ Emergency type changed to ${type} â€” hospitals re-ranked`, 'info');
     }
   }, [emergencyLocation, phase, trafficConditions, emergencyMode, localHospitals, rankHospitals, addAlert]);
 
-  // ── Cleanup on unmount ────────────────────────────────────────────
+  // â”€â”€ Cleanup on unmount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => () => {
     if (animRef.current)         clearInterval(animRef.current);
     if (rerouteTimerRef.current) clearInterval(rerouteTimerRef.current);
     if (trafficTimerRef.current) clearInterval(trafficTimerRef.current);
   }, []);
 
-  // ── Mobile sidebar toggle ─────────────────────────────────────────
+  // â”€â”€ Mobile sidebar toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Emergency Type Collapsible ────────────────────────────────────
+  // â”€â”€ Emergency Type Collapsible â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [emergencyControlsOpen, setEmergencyControlsOpen] = useState(false);
 
-  // ── SOS overlay state ─────────────────────────────────────────────
+  // â”€â”€ SOS overlay state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [sosVisible, setSosVisible]       = useState(false);
   const sosPendingRef                     = useRef(null); // stores the pending dispatch args
 
-  // ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden font-body bg-brand-bg text-brand-text transition-colors duration-300 relative ${presentationMode ? 'presentation-mode' : ''}`}>
       {/* Demo overlay moved to Right Panel */}
@@ -1079,9 +1084,9 @@ export default function App() {
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
         
-        {/* ── Top 3-Column Area ─────────────────────────────────────── */}
+        {/* â”€â”€ Top 3-Column Area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* ── Mobile overlay backdrop ──────────────────────────────── */}
+        {/* â”€â”€ Mobile overlay backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {sidebarOpen && (
           <div
             className={`fixed inset-0 bg-black/50 z-[200] md:hidden`}
@@ -1089,7 +1094,7 @@ export default function App() {
           />
         )}
 
-        {/* ── Left Sidebar: Controls ────────────────────────────── */}
+        {/* â”€â”€ Left Sidebar: Controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className={`
           inset-y-0 left-0 flex flex-col overflow-hidden
           bg-brand-surface border-r border-brand-border
@@ -1099,7 +1104,7 @@ export default function App() {
         `} style={{ width: '22%' }}>
           <div className="flex items-center justify-between px-3 pt-3 md:hidden">
             <span className="font-display text-[10px] text-brand-muted tracking-[0.15em] uppercase">CONTROL PANEL</span>
-            <button onClick={() => { setSidebarOpen(false); }} className="text-brand-muted text-lg bg-transparent border-none cursor-pointer">✕</button>
+            <button onClick={() => { setSidebarOpen(false); }} className="text-brand-muted text-lg bg-transparent border-none cursor-pointer">âœ•</button>
           </div>
 
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 flex flex-col gap-3">
@@ -1182,7 +1187,7 @@ export default function App() {
 
 
 
-        {/* ── Map area ─────────────────────────────────────────────── */}
+        {/* â”€â”€ Map area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="flex-1 flex flex-col min-w-0 relative shrink-0" style={{ width: '56%' }}>
           <div className="w-full relative overflow-hidden flex-1 h-full">
           <MapView
@@ -1225,14 +1230,14 @@ export default function App() {
               onClick={handleDispatch}
               className="btn-dispatch md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-[900] px-8 py-3 rounded-xl text-sm"
             >
-              🚑 DISPATCH
+              ðŸš‘ DISPATCH
             </button>
           )}
         </div>
           
         </div>
         
-        {/* ── Right Sidebar: AI Intelligence ────────────────────── */}
+        {/* â”€â”€ Right Sidebar: AI Intelligence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="hidden lg:flex shrink-0 flex-col overflow-hidden bg-brand-surface border-l border-brand-border z-[200]" style={{ width: '22%' }}>
             <div className="p-3 border-b border-brand-border bg-brand-card">
               <div className="font-display text-[11px] text-brand-cyan tracking-widest uppercase flex items-center gap-2">
@@ -1282,7 +1287,7 @@ export default function App() {
         
       </div> {/* End of Top 3-Column Area */}
 
-      {/* ── Operational Analytics ────────────────────────────────── */}
+      {/* â”€â”€ Operational Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="shrink-0 bg-brand-surface border-t border-brand-border z-[200] flex">
         <div className="w-[22%] shrink-0 border-r border-brand-border overflow-y-auto p-3 hidden xl:block">
           <DispatchTimeline steps={dispatchTimeline} phase={phase} />
@@ -1305,3 +1310,4 @@ export default function App() {
     </div>
   );
 }
+

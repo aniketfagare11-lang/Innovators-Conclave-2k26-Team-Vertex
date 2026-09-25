@@ -84,8 +84,10 @@ async function fetchOverpassHospitals(lat, lng) {
     const isHosp = tags.amenity === 'hospital' || tags.building === 'hospital' || tags.healthcare === 'hospital';
     const name = rawName || (isHosp ? `Medical Hospital #${index + 1}` : `Health Clinic #${index + 1}`);
     const nameLow = name.toLowerCase();
-    const elLat = el.lat || el.center.lat;
-    const elLon = el.lon || el.center.lon;
+    // Nodes use el.lat/el.lon directly; ways/relations use el.center — use optional chaining to avoid crash
+    const elLat = el.lat ?? el.center?.lat;
+    const elLon = el.lon ?? el.center?.lon;
+    if (!elLat || !elLon) return null; // skip elements with no resolvable coordinates
 
     let type = isHosp ? 'Multi-Specialty' : 'Clinic';
     if (nameLow.includes('super') || nameLow.includes('specialty')) type = 'Super-Specialty';
@@ -113,7 +115,7 @@ async function fetchOverpassHospitals(lat, lng) {
       rating: Math.round((3.6 + pseudoRandom(9) * 1.3) * 10) / 10,
       icon: '🏥'
     };
-  });
+  }).filter(Boolean); // drop nulls from elements with no resolvable coordinates
 
   return { hospitals, radiusUsed: finalRadius, partialResults };
 }
@@ -129,12 +131,32 @@ router.get('/nearby', async (req, res) => {
   const centerLat = parseFloat(lat);
   const centerLng = parseFloat(lng);
 
-  const result = await fetchOverpassHospitals(centerLat, centerLng);
+  let result = { hospitals: [], radiusUsed: 0, partialResults: false };
+  try {
+    result = await fetchOverpassHospitals(centerLat, centerLng);
+  } catch (err) {
+    console.warn('Overpass fetch error:', err.message);
+  }
+
+  // If Overpass returned nothing, fall back to static hospital list
+  if (!result.hospitals || result.hospitals.length === 0) {
+    console.log('Overpass returned 0 hospitals — serving static fallback data');
+    return res.json({
+      hospitals: staticHospitals,
+      count: staticHospitals.length,
+      radiusUsed: 0,
+      partialResults: false,
+      source: 'static_fallback',
+      fetchedAt: new Date().toISOString()
+    });
+  }
+
   res.json({
     hospitals: result.hospitals,
     count: result.hospitals.length,
     radiusUsed: result.radiusUsed,
     partialResults: result.partialResults,
+    source: 'overpass',
     fetchedAt: new Date().toISOString()
   });
 });
