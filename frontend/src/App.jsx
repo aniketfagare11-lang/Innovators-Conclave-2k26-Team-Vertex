@@ -1180,6 +1180,8 @@ export default function App() {
           </div>
         </div>
 
+
+
         {/* ── Map area ─────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 relative shrink-0" style={{ width: '56%' }}>
           <div className="w-full relative overflow-hidden flex-1 h-full">
@@ -1298,7 +1300,8 @@ export default function App() {
             />
         </div>
       </div>
-    </div>
   </div>
+  );
+    </div>
   );
 }
